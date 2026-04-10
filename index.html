@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LifeEdit AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+  /* 배경색: 깨끗한 화이트 */
+  --bg: #ffffff;
+  
+  /* 카드 및 주요 표면: 아주 연한 라벤더/화이트 그레이 */
+  --surface: #f8f8fc;
+  --surface2: #eff0f8; /* 입력창 등 */
+  
+  /* 테두리: 연한 그레이 */
+  --border: rgba(0,0,0,0.08);
+  
+  /* 포인트 컬러 (퍼플): 예시 이미지의 그 예쁜 보라색 */
+  --accent: #6d28d9; /* 메인 퍼플 */
+  --accent2: #a78bfa; /* 보조 퍼플 */
+  
+  /* 상태 색상 (유지) */
+  --green: #34d399;
+  --red: #f87171;
+  --amber: #fbbf24;
+  
+  /* 글자 색상: 어두운 색으로 반전 */
+  --text: #1f2937; /* 메인 글자 */
+  --text2: #6b7280; /* 부제목/설명 */
+  --text3: #9ca3af; /* 아주 연한 글자 */
+  
+  /* 둥글기 (유지) */
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #000; font-family: 'Pretendard', sans-serif; }
+
+  .phone-shell {
+    width: 100%;
+    max-width: 430px;
+    height: 100dvh;
+    margin: 0 auto;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  /* SCREENS */
+  .screens { flex: 1; overflow: hidden; position: relative; }
+  .screen {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    opacity: 0; pointer-events: none;
+    transform: translateX(30px);
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    padding-bottom: 90px;
+  }
+  .screen.active {
+    opacity: 1; pointer-events: all; transform: translateX(0);
+  }
+
+  /* TAB BAR */
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 8px 0 20px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    font-size: 10px; color: var(--text3);
+    cursor: pointer; padding: 6px 0;
+    transition: color 0.2s;
+  }
+  .tab.active { color: var(--accent2); }
+  .tab svg { width: 22px; height: 22px; }
+
+  /* COMMON */
+  .section-title {
+    font-size: 12px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase;
+    letter-spacing: 1px; padding: 20px 20px 10px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 16px 12px;
+    padding: 18px;
+  }
+  .card-title {
+    font-size: 12px; color: var(--text3);
+    font-weight: 500; margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .badge {
+    font-size: 10px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 600;
+  }
+  .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-amber { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .badge-accent { background: rgba(99,102,241,0.15); color: var(--accent2); }
+
+  .btn {
+    width: 100%; padding: 15px;
+    border-radius: var(--radius-sm); border: none;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:active { transform: scale(0.98); background: #4f46e5; }
+  .btn-secondary { background: var(--surface2); color: var(--text); }
+
+  /* =================== 추가: 스플래시 & 프로필 선택 =================== */
+  #splash-screen {
+    position: absolute; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.5s ease;
+  }
+  .splash-logo {
+    font-size: 42px; font-weight: 700; color: var(--text);
+  }
+  .splash-logo span { color: var(--accent2); }
+
+  #profile-select-wrap {
+    display: flex; flex-direction: column; align-items: center; width: 100%;
+  }
+  .profile-grid {
+    display: flex; gap: 16px; margin: 30px 0 40px; justify-content: center; width: 100%;
+  }
+  .profile-card {
+    width: 140px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 24px 16px; display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .profile-card:active { transform: scale(0.95); }
+  .profile-icon {
+    width: 64px; height: 64px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 16px;
+  }
+  .profile-icon.jisu { background: #0066FF; } /* 파란색 */
+  .profile-icon.seolhee { background: #F59E0B; } /* 노란색 */
+  .profile-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  
+  .auth-text-btn {
+    font-size: 14px; color: var(--text3); margin-bottom: 12px;
+    background: none; border: none; cursor: pointer; font-family: 'Pretendard', sans-serif;
+  }
+  .auth-text-btn span { color: var(--accent2); font-weight: 600; }
+
+  /* =================== ONBOARDING =================== */
+  #screen-onboarding {
+    display: flex; flex-direction: column;
+    justify-content: center; min-height: 100%;
+    padding: 40px 24px 100px;
+  }
+  .onboard-logo {
+    font-size: 32px; font-weight: 700; color: var(--text);
+    margin-bottom: 8px;
+  }
+  .onboard-logo span { color: var(--accent2); }
+  .onboard-sub { font-size: 15px; color: var(--text2); margin-bottom: 48px; line-height: 1.6; }
+
+  .input-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; font-weight: 500; }
+  .input-field {
+    width: 100%; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px 16px; font-size: 15px; color: var(--text);
+    font-family: 'Pretendard', sans-serif; margin-bottom: 20px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .input-field:focus { border-color: var(--accent); }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .chip {
+    padding: 8px 16px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface2);
+    font-size: 13px; color: var(--text2); cursor: pointer;
+    transition: all 0.2s; font-family: 'Pretendard', sans-serif;
+  }
+  .chip.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); color: var(--accent2); }
+
+  /* =================== HOME =================== */
+  .home-header {
+    padding: 20px 20px 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .home-greeting { font-size: 22px; font-weight: 700; color: var(--text); }
+  .home-date { font-size: 13px; color: var(--text3); margin-top: 4px; }
+  .gps-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 20px; padding: 6px 12px;
+    font-size: 11px; color: var(--green); font-weight: 600;
+  }
+  .gps-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* 재무 카드 */
+  .finance-big {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: var(--radius); margin: 16px 16px 12px;
+    padding: 20px;
+  }
+  .finance-label { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+  .finance-amount { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+  .finance-row { display: flex; justify-content: space-between; }
+  .finance-item { text-align: center; }
+  .finance-item-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+  .finance-item-val { font-size: 15px; font-weight: 600; color: #fff; }
+
+  /* 카테고리 바 */
+  .cat-bars { display: flex; flex-direction: column; gap: 10px; }
+  .cat-row { display: flex; align-items: center; gap: 10px; }
+  .cat-name { font-size: 13px; color: var(--text2); width: 80px; flex-shrink: 0; }
+  .cat-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+  .cat-amount { font-size: 12px; color: var(--text3); width: 65px; text-align: right; flex-shrink: 0; }
+
+  /* 건강 */
+  .health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .health-item {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    padding: 14px; border: 1px solid var(--border);
+  }
+  .health-icon { font-size: 20px; margin-bottom: 8px; }
+  .health-val { font-size: 20px; font-weight: 700; color: var(--text); }
+  .health-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* =================== APPLE HEALTH =================== */
+  .ah-card-title {
+    font-size: 12px; color: var(--text3); font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .ah-apple-badge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 600; color: #fff;
+    background: linear-gradient(135deg,#fc5c7d,#6a3093);
+    border-radius: 12px; padding: 3px 9px;
+  }
+  .ah-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .ah-item {
+    background: var(--surface2); border-radius: var(--radius-sm);
+    border: 1px solid var(--border); padding: 12px 14px;
+  }
+  .ah-item.full-width { grid-column: 1 / -1; }
+  .ah-icon { font-size: 18px; margin-bottom: 6px; }
+  .ah-val { font-size: 19px; font-weight: 700; color: var(--text); }
+  .ah-val.warn { color: var(--amber); }
+  .ah-val.danger { color: var(--red); }
+  .ah-label { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .ah-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .ah-bp-row { display: flex; align-items: flex-end; gap: 6px; margin-top: 2px; }
+  .ah-bp-spike {
+    font-size: 10px; font-weight: 600; color: var(--red);
+    background: rgba(248,113,113,0.12); border-radius: 8px;
+    padding: 2px 7px; margin-top: 4px; display: inline-block;
+  }
+  .ah-trend { display: flex; align-items: center; gap: 3px; margin-top: 4px; }
+  .ah-trend-bar {
+    flex: 1; height: 4px; border-radius: 2px; background: var(--surface2);
+    overflow: hidden;
+  }
+  .ah-trend-fill { height: 100%; border-radius: 2px; }
+  .ah-mini-label { font-size: 10px; color: var(--text3); width: 28px; flex-shrink: 0; }
+
+  /* GPS 히스토리 */
+  .gps-timeline { display: flex; flex-direction: column; gap: 0; }
+  .gps-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; position: relative; }
+  .gps-item:not(:last-child)::after {
+    content: ''; position: absolute;
+    left: 15px; top: 30px; bottom: -10px;
+    width: 1px; background: var(--border);
+  }
+  .gps-dot-wrap { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gps-info { flex: 1; }
+  .gps-place { font-size: 14px; font-weight: 600; color: var(--text); }
+  .gps-time { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .gps-duration { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+  /* 거래내역 */
+  .tx-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .tx-info { flex: 1; }
+  .tx-name { font-size: 14px; font-weight: 500; color: var(--text); }
+  .tx-cat { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .tx-amount { font-size: 15px; font-weight: 600; }
+  .tx-amount.out { color: var(--red); }
+  .tx-amount.in { color: var(--green); }
+
+  /* =================== SIMULATION =================== */
+  .sim-header { padding: 20px 20px 0; }
+  .sim-title { font-size: 22px; font-weight: 700; color: var(--text); }
+  .sim-sub { font-size: 14px; color: var(--text2); margin-top: 6px; line-height: 1.5; }
+
+  .choice-cards { display: flex; gap: 10px; margin: 0 16px 12px; }
+  .choice-card {
+    flex: 1; background: var(--surface2); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 16px; cursor: pointer;
+    transition: all 0.2s; text-align: center;
+  }
+  .choice-card.selected { border-color: var(--accent); background: rgba(99,102,241,0.1); }
+  .choice-card-icon { font-size: 28px; margin-bottom: 8px; }
+  .choice-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .choice-card-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+
+  /* AI 결과 */
+  .ai-result-box {
+    margin: 0 16px 12px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(129,140,248,0.05) 100%);
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: var(--radius); padding: 18px;
+  }
+  .ai-result-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ai-avatar { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .ai-name { font-size: 13px; font-weight: 600; color: var(--accent2); }
+  .ai-result-text { font-size: 14px; color: var(--text); line-height: 1.7; }
+
+  /* 비교표 */
+  .compare-table { width: 100%; border-collapse: collapse; }
+  .compare-table th {
+    font-size: 12px; color: var(--text3); font-weight: 500;
+    padding: 8px 0; text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .compare-table th:not(:first-child) { text-align: center; }
+  .compare-table td { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; color: var(--text2); }
+  .compare-table td:not(:first-child) { text-align: center; font-weight: 600; }
+  .val-good { color: var(--green); }
+  .val-bad { color: var(--red); }
+  .val-warn { color: var(--amber); }
+  .val-neu { color: var(--text3); }
+
+  /* 로딩 */
+  .loading-box {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px; gap: 16px;
+  }
+  .loading-spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--text2); text-align: center; line-height: 1.6; }
+
+  /* action plan */
+  .action-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .action-text { font-size: 13px; color: var(--text); line-height: 1.6; flex: 1; }
+  .action-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .action-btn-sm {
+    font-size: 11px; padding: 5px 10px; border-radius: 6px;
+    border: none; cursor: pointer; font-family: 'Pretendard', sans-serif; font-weight: 600;
+  }
+  .action-btn-sm.pri { background: var(--accent); color: #fff; }
+  .action-btn-sm.sec { background: var(--surface2); color: var(--text2); }
+
+  /* =================== CHAT =================== */
+  .chat-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .chat-avatar { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .chat-name { font-size: 16px; font-weight: 700; color: var(--text); }
+  .chat-status { font-size: 12px; color: var(--green); }
+
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 80%; }
+  .msg.user { align-self: flex-end; }
+  .msg.ai { align-self: flex-start; }
+  .msg-bubble {
+    padding: 12px 16px; border-radius: 18px;
+    font-size: 14px; line-height: 1.6;
+  }
+  .msg.user .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.ai .msg-bubble { background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+  .msg-time { font-size: 10px; color: var(--text3); margin-top: 4px; text-align: right; }
+  .msg.ai .msg-time { text-align: left; }
+
+  .chat-input-wrap {
+    padding: 12px 16px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: flex-end;
+    background: var(--bg);
+  }
+  .chat-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 22px; padding: 12px 16px;
+    font-size: 14px; color: var(--text);
+    font-family: 'Pretendard', sans-serif;
+    outline: none; resize: none; max-height: 100px;
+    line-height: 1.4;
+  }
+  .chat-send {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--accent); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s;
+  }
+  .chat-send:active { transform: scale(0.92); }
+
+  /* =================== PROFILE =================== */
+  .profile-header { padding: 24px 20px 0; }
+  .profile-avatar-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .profile-avatar { width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(135deg, var(--accent), #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: #fff; }
+  .profile-name { font-size: 22px; font-weight: 700; color: var(--text); }
+  .profile-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  .plan-card {
+    margin: 0 16px 12px;
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    border: 1px solid rgba(99,102,241,0.4);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .plan-name { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+  .plan-type { font-size: 20px; font-weight: 700; color: #fff; }
+  .plan-features { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 6px; line-height: 1.6; }
+
+  .setting-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+  }
+  .setting-label { font-size: 15px; color: var(--text); }
+  .setting-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .toggle { width: 46px; height: 26px; border-radius: 13px; background: var(--accent); position: relative; cursor: pointer; transition: background 0.2s; }
+  .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 11px; background: #fff; top: 2px; right: 2px; transition: right 0.2s; }
+  .toggle.off { background: var(--surface2); }
+  .toggle.off::after { right: auto; left: 2px; }
+
+  /* 타이핑 인디케이터 */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  .hidden { display: none !important; }
+
+  /* =================== PSS 검사 =================== */
+  .pss-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 200; display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .pss-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .pss-modal {
+    background: var(--surface); border-radius: 24px 24px 0 0;
+    width: 100%; max-height: 90dvh; overflow-y: auto;
+    padding: 24px 20px 40px;
+    transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .pss-modal-overlay.open .pss-modal { transform: translateY(0); }
+  .pss-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 20px; }
+  .pss-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .pss-sub { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .pss-progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin-bottom: 24px; overflow: hidden; }
+  .pss-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s; }
+  .pss-q-num { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .pss-q-text { font-size: 15px; color: var(--text); line-height: 1.6; margin-bottom: 24px; font-weight: 500; }
+  .pss-options { display: flex; flex-direction: column; gap: 10px; }
+  .pss-opt {
+    padding: 14px 18px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: var(--surface2);
+    font-size: 14px; color: var(--text2); cursor: pointer;
+    transition: all 0.2s; font-family: 'Pretendard', sans-serif; text-align: left;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pss-opt:hover { border-color: var(--accent); color: var(--text); }
+  .pss-opt.selected { border-color: var(--accent); background: rgba(99,102,241,0.15); color: var(--accent2); }
+  .pss-opt-badge { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .pss-opt.selected .pss-opt-badge { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pss-nav { display: flex; gap: 10px; margin-top: 24px; }
+  .pss-result { text-align: center; padding: 20px 0; }
+  .pss-score-ring { width: 120px; height: 120px; margin: 0 auto 20px; position: relative; }
+  .pss-score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .pss-score-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .pss-score-val { font-size: 28px; font-weight: 700; color: var(--text); }
+  .pss-score-max { font-size: 12px; color: var(--text3); }
+  .pss-result-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .pss-result-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 20px; }
+  .pss-level-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .pss-level-seg { flex: 1; }
+  .pss-level-marker { position: relative; margin-bottom: 20px; }
+  .pss-level-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); }
+
+  /* =================== CALENDAR =================== */
+  .cal-header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 12px;
+  }
+  .cal-month-title { font-size: 20px; font-weight: 700; color: var(--text); }
+  .cal-nav-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .cal-nav-btn:hover { background: var(--accent); }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; padding: 0 12px; gap: 2px; }
+  .cal-weekday { font-size: 11px; font-weight: 600; color: var(--text3); padding: 6px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); padding: 4px 12px 12px; gap: 2px; }
+  .cal-cell {
+    aspect-ratio: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start; padding-top: 6px;
+    border-radius: 10px; cursor: pointer; transition: background 0.2s; position: relative;
+  }
+  .cal-cell:hover { background: var(--surface2); }
+  .cal-cell.today { background: var(--accent) !important; }
+  .cal-cell.today .cal-day { color: #fff; font-weight: 700; }
+  .cal-cell.other-month .cal-day { color: var(--text3); opacity: 0.4; }
+  .cal-cell.has-event::after {
+    content: ''; position: absolute; bottom: 4px;
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent2);
+  }
+  .cal-cell.today.has-event::after { background: rgba(255,255,255,0.8); }
+  .cal-day { font-size: 13px; color: var(--text2); }
+  .cal-events-section { padding: 0 16px 12px; }
+  .cal-event-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .cal-event-item:last-child { border-bottom: none; }
+  .cal-event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cal-event-info { flex: 1; }
+  .cal-event-title { font-size: 14px; color: var(--text); font-weight: 500; }
+  .cal-event-time { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .cal-selected-date { font-size: 14px; font-weight: 600; color: var(--accent2); padding: 12px 16px 8px; }
+
+  /* 스트레스 카드 클릭 스타일 */
+  .health-item.clickable { cursor: pointer; transition: all 0.2s; }
+  .health-item.clickable:hover { border-color: var(--accent); }
+  .health-item.clickable:active { transform: scale(0.97); }
+  .pss-tap-hint { font-size: 9px; color: var(--accent2); margin-top: 2px; }
+
+  /* PIN 입력 */
+  .pin-input {
+    flex: 1; width: 56px; height: 56px;
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 12px; text-align: center;
+    font-size: 20px; font-weight: 700; color: var(--text);
+    font-family: 'Pretendard', sans-serif;
+    outline: none; transition: border-color 0.2s;
+  }
+  .pin-input:focus { border-color: var(--accent); }
+  .pin-input.error { border-color: var(--red); animation: shake 0.3s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+</style>
+</head>
+<body>
+<div class="phone-shell">
+
+  <div id="splash-screen">
+    <div class="splash-logo">LifeEdit <span>AI</span></div>
+  </div>
+
+  <div class="status-bar">
+    <span id="status-time">9:41</span>
+    <span style="display:flex;gap:5px;align-items:center;">
+      <svg width="15" height="11" viewBox="0 0 15 11"><rect x="0" y="3" width="2.5" height="8" rx="1" fill="currentColor" opacity="0.4"/><rect x="3.5" y="2" width="2.5" height="9" rx="1" fill="currentColor" opacity="0.6"/><rect x="7" y="0.5" width="2.5" height="10.5" rx="1" fill="currentColor" opacity="0.8"/><rect x="10.5" y="0" width="2.5" height="11" rx="1" fill="currentColor"/></svg>
+      <svg width="16" height="12" viewBox="0 0 24 12"><rect x="0" y="1" width="20" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.6"/><rect x="1.5" y="2.5" width="14" height="7" rx="1" fill="currentColor"/><rect x="21" y="3.5" width="3" height="5" rx="1" fill="currentColor" opacity="0.6"/></svg>
+    </span>
+  </div>
+
+  <div class="screens" id="screens">
+
+    <div class="screen" id="screen-onboarding" style="padding-bottom:20px;">
+      <div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;padding:40px 24px 40px;">
+
+       <div style="margin-bottom:20px; text-align:center;">
+          <div class="onboard-logo">LifeEdit <span>AI</span></div>
+        </div>
+
+        <div id="profile-select-wrap">
+          <div style="font-size:15px; color:var(--text3); margin-bottom: 20px;">접속할 프로필을 선택해 주세요</div>
+          
+          <div class="profile-grid">
+            <div class="profile-card" onclick="enterApp('지수')">
+              <div class="profile-icon jisu">지</div>
+              <div class="profile-name">지수</div>
+              <span class="badge badge-accent" style="font-size:10px;">PRO ✨</span>
+            </div>
+            <div class="profile-card" onclick="enterApp('설희')">
+              <div class="profile-icon seolhee">설</div>
+              <div class="profile-name">설희</div>
+              <span class="badge" style="font-size:10px; background:var(--surface2); color:var(--text2); border:1px solid var(--border);">BASIC ☁️</span>
+            </div>
+          </div>
+
+          <button class="auth-text-btn" onclick="showAuthForms('login')">기존 계정으로 접속하기 <span>PIN 로그인</span></button>
+          <button class="auth-text-btn" onclick="showAuthForms('signup')">처음이신가요? <span style="color:var(--text2); text-decoration:underline;">회원가입</span></button>
+        </div>
+
+        <div id="auth-forms-wrap" style="display:none;">
+
+        <div style="display:flex;background:var(--surface2);border-radius:12px;padding:4px;margin-bottom:28px;">
+          <button id="auth-tab-login" onclick="switchAuthTab('login')" style="flex:1;padding:10px;border:none;border-radius:9px;font-family:'Pretendard',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#fff;">로그인</button>
+          <button id="auth-tab-signup" onclick="switchAuthTab('signup')" style="flex:1;padding:10px;border:none;border-radius:9px;font-family:'Pretendard',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text3);">회원가입</button>
+        </div>
+
+        <div id="auth-login-form">
+          <div class="input-label">닉네임</div>
+          <input class="input-field" id="login-name" type="text" placeholder="닉네임 입력" oninput="checkLoginHint(this.value)">
+          <div id="login-hint" style="font-size:12px;margin:-14px 0 16px;padding:8px 12px;border-radius:8px;display:none;"></div>
+          <div class="input-label">PIN 4자리</div>
+          <div style="display:flex;gap:12px;margin-bottom:24px;justify-content:center;" id="login-pin-wrap">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          </div>
+          <div id="login-error" style="font-size:13px;color:var(--red);text-align:center;margin-bottom:12px;min-height:18px;"></div>
+          <button class="btn btn-primary" onclick="doLogin()">로그인 →</button>
+        </div>
+
+        <div id="auth-signup-form" style="display:none;">
+          <div class="input-label">닉네임</div>
+          <input class="input-field" id="signup-name" type="text" placeholder="예: 지수" oninput="checkPresetHint(this.value)">
+          <div id="preset-hint" style="font-size:12px;margin:-14px 0 16px;padding:8px 12px;border-radius:8px;display:none;"></div>
+          <div class="input-label">PIN 4자리 설정</div>
+          <div style="display:flex;gap:12px;margin-bottom:8px;justify-content:center;" id="signup-pin-wrap">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          </div>
+          <div class="input-label" style="margin-top:16px;">PIN 확인</div>
+          <div style="display:flex;gap:12px;margin-bottom:8px;justify-content:center;" id="signup-pin-confirm-wrap">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          </div>
+          <div id="signup-error" style="font-size:13px;color:var(--red);text-align:center;margin-bottom:12px;min-height:18px;"></div>
+          <button class="btn btn-primary" onclick="doSignup()">계정 만들기 →</button>
+        </div>
+<button class="auth-text-btn" style="margin-top:20px; width:100%; text-align:center;" onclick="showProfileSelect()">← 프로필 선택으로 돌아가기</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-home">
+      <div class="home-header">
+        <div>
+          <div class="home-greeting" id="greeting-name">안녕하세요, 지수님 👋</div>
+          <div class="home-date" id="home-month-label">2025년 11월 · 데이터 분석 완료</div>
+        </div>
+        <div class="gps-pill">
+          <div class="gps-dot"></div>
+          <span id="home-location-pill">충북대</span>
+        </div>
+      </div>
+
+      <div class="finance-big">
+        <div class="finance-label" id="fin-label">11월 여유 자금</div>
+        <div class="finance-amount" id="fin-amount" style="color:#f87171;">-360,200원</div>
+        <div class="finance-row">
+          <div class="finance-item">
+            <div class="finance-item-label">총 수입</div>
+            <div class="finance-item-val" style="color:#34d399;" id="fin-income">+742,900원</div>
+          </div>
+          <div class="finance-item">
+            <div class="finance-item-label">총 지출</div>
+            <div class="finance-item-val" style="color:#f87171;" id="fin-expense">-1,103,100원</div>
+          </div>
+          <div class="finance-item">
+            <div class="finance-item-label">저축률</div>
+            <div class="finance-item-val" style="color:#fbbf24;" id="fin-rate">-48%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          카테고리별 지출
+          <span class="badge badge-accent">오픈 뱅킹</span>
+        </div>
+        <div class="cat-bars" id="cat-bars-container">
+          </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          건강 & 활동
+          <span class="badge badge-amber">입력값</span>
+        </div>
+        <div class="health-grid">
+          <div class="health-item">
+            <div class="health-icon">😴</div>
+            <div class="health-val" id="health-sleep-val">5.7h</div>
+            <div class="health-label">평균 수면</div>
+          </div>
+          <div class="health-item">
+            <div class="health-icon">🏃</div>
+            <div class="health-val" id="health-exercise-val">3/7일</div>
+            <div class="health-label">이번 주 운동</div>
+          </div>
+          <div class="health-item clickable" id="stress-card" onclick="openPSS()">
+            <div class="health-icon">😤</div>
+            <div class="health-val" id="stress-display">측정 필요</div>
+            <div class="health-label" id="stress-label">스트레스 PSS</div>
+            <div class="pss-tap-hint">탭하여 검사 →</div>
+          </div>
+          <div class="health-item">
+            <div class="health-icon">🚌</div>
+            <div class="health-val" id="health-commute-val">2.3h</div>
+            <div class="health-label">일 평균 통근</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== APPLE HEALTH CARD (PRO only) ===== -->
+      <div class="card" id="apple-health-card" style="display:none;">
+        <div class="ah-card-title">
+          애플 헬스케어
+          <div class="ah-apple-badge">
+            <svg width="11" height="13" viewBox="0 0 14 17" fill="white"><path d="M13.5 12.6c-.3.7-.6 1.3-1.1 1.9-.6.8-1.1 1.3-1.7 1.4-.4.1-.9 0-1.5-.3-.6-.3-1.1-.4-1.7-.4s-1.1.1-1.7.4c-.6.3-1.1.4-1.5.3-.6-.1-1.1-.6-1.7-1.4-.6-.7-1-1.5-1.4-2.5C.5 11 .3 9.8.3 8.6c0-1.3.3-2.4.9-3.3.5-.7 1.1-1.2 1.9-1.6.7-.3 1.5-.5 2.2-.5.5 0 1.1.2 1.8.5.7.3 1.1.5 1.3.5.1 0 .6-.2 1.3-.5.7-.3 1.3-.5 1.8-.5 1.4.1 2.5.7 3.1 1.8-1.2.7-1.8 1.8-1.8 3.2 0 1.1.4 2 1.2 2.7l-.3.7zM9.7 1.2c0 .8-.3 1.6-.9 2.2-.7.7-1.5 1.1-2.4 1-.1-.1-.1-.2-.1-.4 0-.8.3-1.6.9-2.2.3-.3.7-.6 1.1-.8.5-.2.9-.3 1.3-.3 0 .2.1.4.1.5z"/></svg>
+            연동됨
+          </div>
+        </div>
+        <div class="ah-grid">
+          <div class="ah-item">
+            <div class="ah-icon">❤️</div>
+            <div class="ah-val" id="ah-hr-val">—</div>
+            <div class="ah-label">평균 심박수</div>
+            <div class="ah-sub" id="ah-hr-sub"></div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-icon">🌙</div>
+            <div class="ah-val" id="ah-sleep-hr-val">—</div>
+            <div class="ah-label">수면 심박수</div>
+            <div class="ah-sub" id="ah-sleep-hr-sub"></div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-icon">👟</div>
+            <div class="ah-val" id="ah-steps-val">—</div>
+            <div class="ah-label">오늘 걸음수</div>
+            <div class="ah-sub" id="ah-steps-sub"></div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-icon">📊</div>
+            <div class="ah-val" id="ah-steps-weekly-val">—</div>
+            <div class="ah-label">주간 평균 걸음수</div>
+            <div class="ah-sub" id="ah-steps-weekly-sub"></div>
+          </div>
+          <div class="ah-item full-width">
+            <div class="ah-icon">🩺</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+              <div>
+                <div class="ah-val" id="ah-bp-val">—</div>
+                <div class="ah-label">오늘 평균 혈압</div>
+                <div id="ah-bp-spike-wrap" style="margin-top:4px;display:none;">
+                  <span class="ah-bp-spike" id="ah-bp-spike-label"></span>
+                </div>
+              </div>
+              <div id="ah-bp-trend-wrap" style="min-width:130px;">
+                <div style="font-size:10px;color:var(--text3);margin-bottom:5px;">이번 주 수축기 추이</div>
+                <div id="ah-bp-trend-bars"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          오늘 이동 기록
+          <span class="badge badge-green">GPS 자동수집</span>
+        </div>
+        <div class="gps-timeline" id="gps-timeline-container">
+          <div class="gps-item">
+            <div class="gps-dot-wrap" style="background:rgba(52,211,153,0.15);">🏠</div>
+            <div class="gps-info">
+              <div class="gps-place">집 (수곡동)</div>
+              <div class="gps-time">07:30 출발</div>
+            </div>
+          </div>
+          <div class="gps-item">
+            <div class="gps-dot-wrap" style="background:rgba(99,102,241,0.15);">🏫</div>
+            <div class="gps-info">
+              <div class="gps-place">충북대학교</div>
+              <div class="gps-time">08:50 도착</div>
+              <div class="gps-duration">이동 시간 80분</div>
+            </div>
+          </div>
+          <div class="gps-item">
+            <div class="gps-dot-wrap" style="background:rgba(251,191,36,0.15);">🍔</div>
+            <div class="gps-info">
+              <div class="gps-place">버거킹 충북대점</div>
+              <div class="gps-time">12:30 · 20분 체류</div>
+            </div>
+          </div>
+          <div class="gps-item">
+            <div class="gps-dot-wrap" style="background:rgba(248,113,113,0.15);">📚</div>
+            <div class="gps-info">
+              <div class="gps-place">도서관</div>
+              <div class="gps-time">14:00 · 3시간 체류</div>
+              <div class="gps-duration">자격증 공부 (65% 완료)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          최근 거래내역
+          <span class="badge badge-accent">오픈 뱅킹</span>
+        </div>
+        <div id="tx-list-container">
+          </div>
+      </div>
+
+      <div style="height:8px;"></div>
+    </div>
+
+    <div class="screen" id="screen-sim">
+      <div class="sim-header">
+        <div class="sim-title">AI 시뮬레이션</div>
+        <div class="sim-sub">내 데이터를 기반으로<br>선택의 미래를 비교해드릴게요</div>
+      </div>
+
+      <div class="section-title">어떤 선택을 시뮬레이션할까요?</div>
+
+      <div id="sim-topic-list" style="display:flex;flex-direction:column;gap:8px;margin:0 16px 14px;"></div>
+
+      <div id="sim-vs-card" style="margin:0 16px 14px;display:none;">
+        <div style="display:flex;align-items:center;gap:0;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);">
+          <div id="vs-label-a" style="flex:1;padding:16px 12px;background:rgba(99,102,241,0.12);text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:var(--accent2);letter-spacing:1px;margin-bottom:6px;">선택 A</div>
+            <div id="vs-text-a" style="font-size:14px;font-weight:700;color:var(--text);"></div>
+          </div>
+          <div style="padding:0 10px;font-size:13px;font-weight:800;color:var(--text3);background:var(--surface);align-self:stretch;display:flex;align-items:center;">VS</div>
+          <div id="vs-label-b" style="flex:1;padding:16px 12px;background:rgba(248,113,113,0.08);text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:1px;margin-bottom:6px;">선택 B</div>
+            <div id="vs-text-b" style="font-size:14px;font-weight:700;color:var(--text);"></div>
+          </div>
+        </div>
+        <button onclick="resetSimTopic()" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-family:'Pretendard',sans-serif;cursor:pointer;">← 다른 주제 선택</button>
+      </div>
+
+      <div id="sim-custom-wrap" style="display:none;margin:0 16px 14px;">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input id="custom-a" class="input-field" type="text" placeholder="선택 A (예: 자취 시작)" style="margin-bottom:0;font-size:13px;padding:10px 12px;flex:1;">
+          <div style="font-size:13px;font-weight:800;color:var(--text3);">VS</div>
+          <input id="custom-b" class="input-field" type="text" placeholder="선택 B (예: 기숙사 유지)" style="margin-bottom:0;font-size:13px;padding:10px 12px;flex:1;">
+        </div>
+      </div>
+
+      <div style="padding:0 16px 12px;">
+        <button class="btn btn-primary" onclick="runSimulation()">
+          🔮 AI 시뮬레이션 실행
+        </button>
+      </div>
+
+      <div id="sim-loading" class="hidden">
+        <div class="loading-box">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">오픈 뱅킹 + 건강 지수를<br>종합 분석 중이에요...</div>
+        </div>
+      </div>
+
+      <div id="sim-result" class="hidden">
+        <div class="ai-result-box">
+          <div class="ai-result-header">
+            <div class="ai-avatar">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            </div>
+            <div class="ai-name">LifeEdit AI 분석</div>
+          </div>
+          <div class="ai-result-text" id="ai-result-text"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">선택에 따른 미래 변화</div>
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>그만두기 ✋</th>
+                <th>유지 💼</th>
+              </tr>
+            </thead>
+            <tbody id="sim-table-body">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-title" id="action-plan-section">추천 실행 플랜</div>
+        <div class="card" id="action-plan-card">
+          <div class="action-item">
+            <div class="action-num">1</div>
+            <div style="flex:1;">
+              <div class="action-text">주말 알바 시간대에 '정처기 모의고사 풀이' 일정 세팅하기</div>
+              <div class="action-btns">
+                <button class="action-btn-sm pri">목표 저장</button>
+                <button class="action-btn-sm sec">알림 켜기</button>
+              </div>
+            </div>
+          </div>
+          <div class="action-item">
+            <div class="action-num">2</div>
+            <div style="flex:1;">
+              <div class="action-text">일 식비 상한 2만원 알림 설정 → 배달 지출 50% 감소 목표</div>
+              <div class="action-btns">
+                <button class="action-btn-sm pri">알림 설정</button>
+                <button class="action-btn-sm sec">나중에</button>
+              </div>
+            </div>
+          </div>
+          <div class="action-item">
+            <div class="action-num">3</div>
+            <div class="action-text">문화/여가 월 예산 5만원 설정 (이번달 50만원 → 조정 필요)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-calendar">
+      <div class="cal-header-row">
+        <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+        <div class="cal-month-title" id="cal-month-label">2025년 11월</div>
+        <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+      </div>
+
+      <div id="cal-connect-banner" style="display:none; margin:0 16px 12px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:var(--radius);padding:14px 16px;align-items:center;gap:12px;">
+        <div style="font-size:22px;">📅</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:var(--amber);">캘린더 미연동</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">연동하면 일정이 자동으로 표시돼요</div>
+        </div>
+        <button onclick="connectCalendar()" style="font-size:11px;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:8px;padding:7px 12px;cursor:pointer;font-family:'Pretendard',sans-serif;">연동하기</button>
+      </div>
+      <div id="cal-connected-banner" style="display:flex;margin:0 16px 12px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);border-radius:var(--radius);padding:12px 16px;align-items:center;gap:10px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0;"></div>
+        <div style="font-size:13px;color:var(--green);font-weight:600;">캘린더 연동됨</div>
+        <div style="font-size:11px;color:var(--text3);margin-left:auto;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="640e0d1711240309050d084a070b09">[email&#160;protected]</a></div>
+      </div>
+
+      <div class="cal-weekdays">
+        <div class="cal-weekday" style="color:#f87171;">일</div>
+        <div class="cal-weekday">월</div>
+        <div class="cal-weekday">화</div>
+        <div class="cal-weekday">수</div>
+        <div class="cal-weekday">목</div>
+        <div class="cal-weekday">금</div>
+        <div class="cal-weekday" style="color:#818cf8;">토</div>
+      </div>
+
+      <div class="cal-grid" id="cal-grid"></div>
+
+      <div class="cal-selected-date" id="cal-selected-label">오늘의 일정</div>
+      <div class="card" style="padding:14px 18px;" id="cal-events-card">
+        <div id="cal-events-list"></div>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-chat" style="display:flex;flex-direction:column;padding-bottom:0;">
+      <div class="chat-header">
+        <div class="chat-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+        <div>
+          <div class="chat-name">LifeEdit AI</div>
+          <div class="chat-status">● 온라인</div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="msg ai">
+          <div class="msg-bubble">안녕하세요! 저는 지수님의 실제 오픈 뱅킹 데이터와 생활 패턴을 알고 있어요 📊<br><br>이번 달 지출이 수입보다 36만원 많았는데, 궁금한 점이나 고민 있으면 편하게 물어보세요!</div>
+          <div class="msg-time">지금</div>
+        </div>
+      </div>
+
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chat-input" placeholder="메시지 입력..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="chat-send" onclick="sendMessage()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="screen" id="screen-profile">
+      <div class="profile-header">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar-text">지</div>
+          <div>
+            <div class="profile-name" id="profile-name-text">김지수</div>
+            <div class="profile-sub">충북대학교 · 국가근로장학생</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="plan-card">
+        <div>
+          <div class="plan-name">현재 플랜</div>
+         <div class="plan-type" id="plan-type-text">PRO ✨</div>
+<div class="plan-features" id="plan-features-text">무제한 시뮬레이션<br>오픈 뱅킹<br>GPS 패턴 분석</div>
+        </div>
+        <div style="text-align:right;">
+<div style="font-size:24px;font-weight:700;color:#fff;" id="plan-price-text">9,900</div>
+<div style="font-size:11px;color:rgba(255,255,255,0.5);" id="plan-price-unit">원/월</div>
+        </div>
+      </div>
+
+      <div class="section-title">연동 현황</div>
+      <div class="card" style="padding:14px 18px;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(52,211,153,0.1);display:flex;align-items:center;justify-content:center;">💳</div>
+            <div style="flex:1;"><div style="font-size:14px;color:var(--text);">오픈 뱅킹</div><div style="font-size:12px;color:var(--text3);" id="profile-toss-status">연동됨</div></div>
+            <span class="badge badge-green">연동됨</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(52,211,153,0.1);display:flex;align-items:center;justify-content:center;">📍</div>
+            <div style="flex:1;"><div style="font-size:14px;color:var(--text);">GPS 위치 수집</div><div style="font-size:12px;color:var(--text3);" id="profile-gps-status">10분마다 자동 저장 중</div></div>
+            <span class="badge badge-green" id="profile-gps-badge">활성</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(52,211,153,0.1);display:flex;align-items:center;justify-content:center;">📅</div>
+            <div style="flex:1;"><div style="font-size:14px;color:var(--text);">캘린더</div><div style="font-size:12px;color:var(--text3);">연동됨</div></div>
+            <span class="badge badge-green">연동됨</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,0.1);display:flex;align-items:center;justify-content:center;">⌚</div>
+            <div style="flex:1;"><div style="font-size:14px;color:var(--text);">갤럭시워치</div><div style="font-size:12px;color:var(--text3);" id="profile-watch-status">수면·심박수 연동</div></div>
+            <span class="badge badge-amber" id="profile-watch-badge">미연동</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;" id="profile-apple-health-row">
+            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(252,92,125,0.15),rgba(106,48,147,0.15));display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="19" viewBox="0 0 14 17" fill="url(#ahGrad)"><defs><linearGradient id="ahGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fc5c7d"/><stop offset="100%" stop-color="#6a3093"/></linearGradient></defs><path d="M13.5 12.6c-.3.7-.6 1.3-1.1 1.9-.6.8-1.1 1.3-1.7 1.4-.4.1-.9 0-1.5-.3-.6-.3-1.1-.4-1.7-.4s-1.1.1-1.7.4c-.6.3-1.1.4-1.5.3-.6-.1-1.1-.6-1.7-1.4-.6-.7-1-1.5-1.4-2.5C.5 11 .3 9.8.3 8.6c0-1.3.3-2.4.9-3.3.5-.7 1.1-1.2 1.9-1.6.7-.3 1.5-.5 2.2-.5.5 0 1.1.2 1.8.5.7.3 1.1.5 1.3.5.1 0 .6-.2 1.3-.5.7-.3 1.3-.5 1.8-.5 1.4.1 2.5.7 3.1 1.8-1.2.7-1.8 1.8-1.8 3.2 0 1.1.4 2 1.2 2.7l-.3.7zM9.7 1.2c0 .8-.3 1.6-.9 2.2-.7.7-1.5 1.1-2.4 1-.1-.1-.1-.2-.1-.4 0-.8.3-1.6.9-2.2.3-.3.7-.6 1.1-.8.5-.2.9-.3 1.3-.3 0 .2.1.4.1.5z"/></svg>
+            </div>
+            <div style="flex:1;"><div style="font-size:14px;color:var(--text);">애플 헬스케어</div><div style="font-size:12px;color:var(--text3);" id="profile-apple-health-status">심박수 · 걸음수 · 혈압 연동됨</div></div>
+            <span class="badge" id="profile-apple-health-badge" style="background:linear-gradient(135deg,rgba(252,92,125,0.15),rgba(106,48,147,0.15));color:#fc5c7d;">연동됨</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">설정</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin:0 16px 12px;overflow:hidden;">
+        <div class="setting-item">
+          <div><div class="setting-label">AI 분석 알림</div><div class="setting-sub">매일 오전 9시 리포트</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-label">지출 초과 알림</div><div class="setting-sub">카테고리 예산 초과 시</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-label">GPS 수집</div><div class="setting-sub">10분 간격 백그라운드</div></div>
+         <div class="toggle" id="toggle-gps"></div>
+        </div>
+        <div class="setting-item">
+          <div><div class="setting-label">개인정보 익명화</div><div class="setting-sub">AI 학습 데이터 제공</div></div>
+          <div class="toggle off"></div>
+        </div>
+      </div>
+      <div style="height:16px;"></div>
+      <div style="padding:0 16px 16px;">
+        <button onclick="doLogout()" style="width:100%;padding:15px;border-radius:var(--radius-sm);border:1.5px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:var(--red);font-family:'Pretendard',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+          로그아웃
+        </button>
+      </div>
+      <div style="padding:0 16px 16px;">
+        <button onclick="confirmDeleteAccount()" style="width:100%;padding:15px;border-radius:var(--radius-sm);border:1.5px solid transparent;background:transparent;color:var(--text3);font-family:'Pretendard',sans-serif;font-size:13px;font-weight:500;cursor:pointer;">
+          회원탈퇴
+        </button>
+      </div>
+      <div style="height:8px;"></div>
+    </div>
+
+  </div><div class="tab-bar" id="tab-bar">
+    <div class="tab active" id="tab-home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12L12 3l9 9"/><path d="M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>
+      홈
+    </div>
+    <div class="tab" id="tab-calendar" onclick="switchTab('calendar')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      캘린더
+    </div>
+    <div class="tab" id="tab-sim" onclick="switchTab('sim')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      시뮬레이션
+    </div>
+    <div class="tab" id="tab-chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      AI 상담
+    </div>
+    <div class="tab" id="tab-profile" onclick="switchTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      프로필
+    </div>
+  </div>
+
+</div><div id="delete-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--surface);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:430px;">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 24px;"></div>
+    <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">정말 탈퇴할까요?</div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:24px;">탈퇴하면 계정 정보가 완전히 삭제되고<br>복구할 수 없어요.</div>
+    <div class="input-label">확인을 위해 PIN 4자리를 입력해주세요</div>
+    <div style="display:flex;gap:12px;margin-bottom:16px;justify-content:center;" id="delete-pin-wrap">
+      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      <input class="pin-input" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]">
+    </div>
+    <div id="delete-error" style="font-size:13px;color:var(--red);text-align:center;margin-bottom:16px;min-height:18px;"></div>
+    <button onclick="doDeleteAccount()" style="width:100%;padding:15px;border-radius:var(--radius-sm);border:none;background:var(--red);color:#fff;font-family:'Pretendard',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">
+      탈퇴하기
+    </button>
+    <button onclick="closeDeleteModal()" style="width:100%;padding:15px;border-radius:var(--radius-sm);border:none;background:var(--surface2);color:var(--text2);font-family:'Pretendard',sans-serif;font-size:15px;font-weight:600;cursor:pointer;">
+      취소
+    </button>
+  </div>
+</div>
+<div class="pss-modal-overlay" id="pss-overlay" onclick="closePSSIfOutside(event)">
+  <div class="pss-modal">
+    <div class="pss-handle"></div>
+    <div id="pss-quiz-view">
+      <div class="pss-title">PSS 스트레스 검사</div>
+      <div class="pss-sub">지난 한 달 동안 어느 정도 느꼈는지 솔직하게 답해주세요 🧠</div>
+      <div class="pss-progress-bar"><div class="pss-progress-fill" id="pss-prog" style="width:10%;"></div></div>
+      <div class="pss-q-num" id="pss-q-num">문항 1 / 10</div>
+      <div class="pss-q-text" id="pss-q-text"></div>
+      <div class="pss-options" id="pss-opts"></div>
+      <div class="pss-nav">
+        <button class="btn btn-secondary" id="pss-prev-btn" onclick="pssNav(-1)" style="display:none;">이전</button>
+        <button class="btn btn-primary" id="pss-next-btn" onclick="pssNav(1)">다음</button>
+      </div>
+    </div>
+    <div id="pss-result-view" class="hidden pss-result">
+      <div class="pss-score-ring">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#1c1c28" stroke-width="10"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke-width="10" stroke-linecap="round"
+            id="pss-ring-arc" stroke-dasharray="314" stroke-dashoffset="314" style="transition:stroke-dashoffset 1s ease;"/>
+        </svg>
+        <div class="pss-score-num">
+          <div class="pss-score-val" id="pss-final-score">0</div>
+          <div class="pss-score-max">/40점</div>
+        </div>
+      </div>
+      <div class="pss-result-title" id="pss-result-title">분석 중...</div>
+      <div class="pss-result-desc" id="pss-result-desc"></div>
+      <div class="pss-level-bar">
+        <div class="pss-level-seg" style="background:#34d399;border-radius:4px 0 0 4px;"></div>
+        <div class="pss-level-seg" style="background:#fbbf24;"></div>
+        <div class="pss-level-seg" style="background:#f87171;border-radius:0 4px 4px 0;"></div>
+      </div>
+      <div class="pss-level-labels" style="margin-bottom:20px;">
+        <span>낮음 (0-13)</span><span>보통 (14-26)</span><span>높음 (27+)</span>
+      </div>
+      <button class="btn btn-primary" onclick="closePSS()">확인하고 닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+// ⚠️ 주의: 클라이언트(HTML)에 API 키를 노출하는 것은 테스트 용도로만 사용하세요!
+const GEMINI_API_KEY = 'AIzaSyCJO3fZO0e0J8Skt_1Wq9QT7XfdRwt_rco';
+
+// ===== 멀티 유저 데이터베이스 =====
+// 닉네임(소문자)에 매핑되는 각 사용자 데이터
+const ALL_USERS_DATA = {
+  // ── 사용자 1: 지수 (2025년 11월 데이터) ──────────────────────────
+  '지수': {
+    name: '지수',
+    month: '2025년 11월',
+    finance: {
+      totalIncome: 742900,
+      totalExpense: 1103100,
+      balance: -360200,
+      categories: {
+        '문화/여가': 508400,
+        '식비(배달)': 188400,
+        '교통': 66770,
+        '뷰티/미용': 45800,
+        '학식': 46700,
+        '송금': 131892,
+        '기타': 61070,
+      },
+      bigSpend: '놀유니버스 티켓 (337,700원 + 170,700원 = 508,400원)',
+      topDelivery: '요기요 71,400원 (11.26)',
+      recentTx: [
+        { icon: '🎟️', name: '놀유니버스 티켓', cat: '문화/여가 · 11.24', amount: -337700 },
+        { icon: '💰', name: '국가근로 10월', cat: '수입 · 11.10', amount: 372900 },
+        { icon: '🛵', name: '요기요', cat: '식비(배달) · 11.26', amount: -71400 },
+        { icon: '🚄', name: 'SR (SRT 기차)', cat: '교통 · 11.24', amount: -25300 },
+        { icon: '💄', name: '올리브영 온라인몰', cat: '뷰티/미용 · 11.16', amount: -27300 },
+      ],
+    },
+    health: { sleep: 5.7, stress: 13, exercise: '3/7일', commute: 2.3 },
+    appleHealth: {
+      // 3월 2026 일별 데이터 (날짜 인덱스 0=3/1 ~ 30=3/31)
+      daily: [
+        { date:'3/1',  hr:77, sleepHr:71, steps:3360,  weeklyAvg:6865,  bp:'132/88', spike:null },
+        { date:'3/2',  hr:74, sleepHr:66, steps:9794,  weeklyAvg:7050,  bp:'130/82', spike:null },
+        { date:'3/3',  hr:75, sleepHr:64, steps:9630,  weeklyAvg:7854,  bp:'132/83', spike:null },
+        { date:'3/4',  hr:78, sleepHr:67, steps:9595,  weeklyAvg:8725,  bp:'146/95', spike:'13:00' },
+        { date:'3/5',  hr:75, sleepHr:65, steps:12272, weeklyAvg:9121,  bp:'136/88', spike:null },
+        { date:'3/6',  hr:79, sleepHr:71, steps:11592, weeklyAvg:9349,  bp:'146/91', spike:'11:30' },
+        { date:'3/7',  hr:72, sleepHr:67, steps:2966,  weeklyAvg:8458,  bp:'130/88', spike:null },
+        { date:'3/8',  hr:74, sleepHr:65, steps:3982,  weeklyAvg:8547,  bp:'134/82', spike:null },
+        { date:'3/9',  hr:76, sleepHr:69, steps:10635, weeklyAvg:8667,  bp:'131/86', spike:null },
+        { date:'3/10', hr:74, sleepHr:69, steps:11944, weeklyAvg:8998,  bp:'131/87', spike:null },
+        { date:'3/11', hr:75, sleepHr:67, steps:10123, weeklyAvg:9073,  bp:'143/92', spike:'10:15' },
+        { date:'3/12', hr:78, sleepHr:66, steps:9850,  weeklyAvg:8727,  bp:'135/86', spike:null },
+        { date:'3/13', hr:74, sleepHr:68, steps:11200, weeklyAvg:8671,  bp:'132/85', spike:null },
+        { date:'3/14', hr:76, sleepHr:70, steps:15420, weeklyAvg:10450, bp:'146/95', spike:'15:40' },
+        { date:'3/15', hr:75, sleepHr:69, steps:4200,  weeklyAvg:10481, bp:'128/83', spike:null },
+        { date:'3/16', hr:77, sleepHr:70, steps:10800, weeklyAvg:10505, bp:'139/89', spike:null },
+        { date:'3/17', hr:76, sleepHr:69, steps:9900,  weeklyAvg:10213, bp:'142/91', spike:'09:50' },
+        { date:'3/18', hr:75, sleepHr:68, steps:10350, weeklyAvg:10245, bp:'130/84', spike:null },
+        { date:'3/19', hr:77, sleepHr:71, steps:11200, weeklyAvg:10438, bp:'144/92', spike:'14:20' },
+        { date:'3/20', hr:74, sleepHr:66, steps:9500,  weeklyAvg:10195, bp:'137/88', spike:null },
+        { date:'3/21', hr:76, sleepHr:70, steps:3100,  weeklyAvg:8435,  bp:'141/93', spike:'17:10' },
+        { date:'3/22', hr:75, sleepHr:69, steps:4500,  weeklyAvg:8478,  bp:'136/89', spike:null },
+        { date:'3/23', hr:77, sleepHr:71, steps:10200, weeklyAvg:8392,  bp:'138/90', spike:null },
+        { date:'3/24', hr:78, sleepHr:72, steps:11400, weeklyAvg:8607,  bp:'145/94', spike:'11:05' },
+        { date:'3/25', hr:75, sleepHr:69, steps:9800,  weeklyAvg:8528,  bp:'130/82', spike:null },
+        { date:'3/26', hr:76, sleepHr:70, steps:10500, weeklyAvg:8428,  bp:'140/91', spike:'15:30' },
+        { date:'3/27', hr:75, sleepHr:72, steps:12253, weeklyAvg:8821,  bp:'136/84', spike:null },
+        { date:'3/28', hr:78, sleepHr:70, steps:5247,  weeklyAvg:9128,  bp:'146/95', spike:'09:50' },
+        { date:'3/29', hr:75, sleepHr:72, steps:2689,  weeklyAvg:8870,  bp:'136/87', spike:null },
+        { date:'3/30', hr:78, sleepHr:71, steps:11505, weeklyAvg:9056,  bp:'132/82', spike:null },
+        { date:'3/31', hr:75, sleepHr:64, steps:11234, weeklyAvg:9032,  bp:'143/94', spike:'14:45' },
+      ],
+      monthlyAvgHr: 76,
+      monthlyAvgSleepHr: 69,
+    },
+    goal: '정처기 자격증 (진도 65%)',
+    concern: '알바 그만둘까',
+    location: '충북대',
+  },
+
+  // ── 사용자 2: 2026년 3월 토스 엑셀 데이터 유저 ────────────────────
+  // 닉네임이 등록되지 않은 신규 유저는 기본값으로 이 데이터를 가져옴
+  // 특정 닉네임으로 매핑하려면 아래 key를 바꾸면 됨 (현재: '설희')
+  '설희': {
+    name: '설희',
+    month: '2026년 3월',
+    finance: {
+      totalIncome: 895506,   // 수입 합계
+      totalExpense: 286406,  // 지출 합계
+      balance: 609100,       // 잔액 (수입 - 지출)
+      categories: {
+        '이체/입금': 895506,
+        '자동이체': 130100,
+        '체크카드': 62906,
+        '출금/송금': 35000,
+        '구독': 11615,
+        '교통': 5300,
+        '기타': 41485,
+      },
+      bigSpend: '네이버페이후불 98,902원 (3.7)',
+      topIncome: '심이정 입금 464,717원 (3.2)',
+      recentTx: [
+        { icon: '📺', name: '교육방송국', cat: '입금 · 3.31', amount: 300000 },
+        { icon: '💳', name: '카카오페이', cat: '자동이체 · 3.31', amount: -50000 },
+        { icon: '💳', name: '카카오페이', cat: '자동이체 · 3.31', amount: -22000 },
+        { icon: '💰', name: '심이정', cat: '입금 · 3.31', amount: 7334 },
+        { icon: '🛒', name: '네이버페이후불', cat: '자동이체 · 3.7', amount: -98902 },
+        { icon: '📦', name: '쿠팡', cat: '자동이체 · 3.7', amount: -16500 },
+        { icon: '💰', name: '심이정', cat: '입금 · 3.2', amount: 464717 },
+      ],
+    },
+    health: { sleep: 7.0, stress: null, exercise: '-', commute: 1.0 },
+    goal: '지출 관리 & 저축 늘리기',
+    concern: '자동이체 지출이 많은데 줄일 수 있을까',
+    location: '청주',
+  },
+};
+
+// ===== 현재 로그인 유저 데이터 (enterApp 에서 세팅됨) =====
+let USER_DATA = ALL_USERS_DATA['지수']; // 기본값
+
+// ===== 사용자별 SYSTEM_PROMPT 생성 함수 =====
+function buildSystemPrompt(d) {
+  const fin = d.finance;
+  const isPlus = fin.balance >= 0;
+  const balLabel = isPlus
+    ? `${fin.balance.toLocaleString()}원 흑자`
+    : `${Math.abs(fin.balance).toLocaleString()}원 적자`;
+  return `당신은 LifeEdit AI입니다. ${d.name}님의 실제 생활 데이터를 알고 있습니다.
+
+[실제 데이터]
+- 기간: ${d.month}
+- 총 수입: ${fin.totalIncome.toLocaleString()}원
+- 총 지출: ${fin.totalExpense.toLocaleString()}원
+- 현재 잔액: ${balLabel}
+- 가장 큰 지출 항목: ${fin.bigSpend}
+- 평균 수면: ${d.health.sleep}시간
+- 현재 목표: ${d.goal}
+- 주요 고민: ${d.concern}
+
+이 데이터를 실제로 알고 있는 것처럼, 공감하며 구체적인 수치를 언급해서 조언해주세요.
+짧고 친근하게 답변하되, 실제 데이터 수치를 자연스럽게 언급하세요.
+한국어로 답변하세요.`;
+}
+
+let SYSTEM_PROMPT = buildSystemPrompt(USER_DATA);
+
+// ===== STATE =====
+let selectedWorry = '알바 그만둘까';
+let chatHistory = [];
+let currentTab = 'home';
+
+// ===== AUTH =====
+// 👇 여기서부터 추가 👇
+function showProfileSelect() {
+  document.getElementById('profile-select-wrap').style.display = 'flex';
+  document.getElementById('auth-forms-wrap').style.display = 'none';
+}
+
+function showAuthForms(tab) {
+  document.getElementById('profile-select-wrap').style.display = 'none';
+  document.getElementById('auth-forms-wrap').style.display = 'block';
+  switchAuthTab(tab); // 로그인 또는 회원가입 탭으로 맞게 전환해줌
+}
+
+function getPins(wrapId) {
+  return [...document.querySelectorAll(`#${wrapId} .pin-input`)].map(i => i.value).join('');
+}
+
+function setupPinInputs(wrapId) {
+  const inputs = [...document.querySelectorAll(`#${wrapId} .pin-input`)];
+  inputs.forEach((input, idx) => {
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/\D/g, '').slice(-1);
+      if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
+    });
+  });
+}
+
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('auth-login-form').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('auth-signup-form').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('auth-tab-login').style.background = isLogin ? 'var(--accent)' : 'transparent';
+  document.getElementById('auth-tab-login').style.color = isLogin ? '#fff' : 'var(--text3)';
+  document.getElementById('auth-tab-signup').style.background = isLogin ? 'transparent' : 'var(--accent)';
+  document.getElementById('auth-tab-signup').style.color = isLogin ? 'var(--text3)' : '#fff';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('signup-error').textContent = '';
+}
+
+function showAuthError(id, msg) {
+  document.getElementById(id).textContent = msg;
+  // PIN 흔들기
+  const wrap = id.includes('login') ? 'login-pin-wrap' : 'signup-pin-wrap';
+  document.querySelectorAll(`#${wrap} .pin-input`).forEach(i => {
+    i.classList.add('error');
+    setTimeout(() => i.classList.remove('error'), 400);
+    i.value = '';
+  });
+  document.querySelector(`#${wrap} .pin-input`).focus();
+}
+
+function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pin = getPins('login-pin-wrap');
+  if (!name) { document.getElementById('login-error').textContent = '닉네임을 입력해주세요'; return; }
+  if (pin.length < 4) { document.getElementById('login-error').textContent = 'PIN 4자리를 입력해주세요'; return; }
+
+  const saved = JSON.parse(localStorage.getItem('lifeedit_users') || '{}');
+  if (!saved[name]) { showAuthError('login-error', '등록된 닉네임이 없어요. 회원가입 해주세요!'); return; }
+  if (saved[name].pin !== pin) { showAuthError('login-error', 'PIN이 틀렸어요 🔒'); return; }
+
+  enterApp(name);
+}
+
+function doSignup() {
+  const name = document.getElementById('signup-name').value.trim();
+  const pin = getPins('signup-pin-wrap');
+  const pinConfirm = getPins('signup-pin-confirm-wrap');
+  if (!name) { document.getElementById('signup-error').textContent = '닉네임을 입력해주세요'; return; }
+  if (pin.length < 4) { document.getElementById('signup-error').textContent = 'PIN 4자리를 입력해주세요'; return; }
+  if (pin !== pinConfirm) { showAuthError('signup-error', 'PIN이 일치하지 않아요'); return; }
+
+  const saved = JSON.parse(localStorage.getItem('lifeedit_users') || '{}');
+  if (saved[name]) { document.getElementById('signup-error').textContent = '이미 있는 닉네임이에요'; return; }
+
+  saved[name] = { pin };
+  localStorage.setItem('lifeedit_users', JSON.stringify(saved));
+  localStorage.setItem('lifeedit_current', name);
+
+  // 데이터 프로필 안내
+  const hasPreset = !!ALL_USERS_DATA[name];
+  if (!hasPreset) {
+    document.getElementById('signup-error').style.color = 'var(--green)';
+    document.getElementById('signup-error').textContent = `✅ 계정 생성! 기본 데이터로 시작해요.`;
+    setTimeout(() => enterApp(name), 900);
+  } else {
+    enterApp(name);
+  }
+}
+
+function enterApp(name) {
+  localStorage.setItem('lifeedit_current', name);
+
+  // 사용자 데이터 로드 (등록된 유저 → 해당 데이터, 미등록 → 기본값 지수)
+  USER_DATA = ALL_USERS_DATA[name] || { ...ALL_USERS_DATA['지수'], name };
+  SYSTEM_PROMPT = buildSystemPrompt(USER_DATA);
+
+  // 프로필 기본 업데이트
+  document.getElementById('greeting-name').textContent = `안녕하세요, ${name}님 👋`;
+  document.getElementById('profile-name-text').textContent = name;
+  document.getElementById('profile-avatar-text').textContent = name[0];
+
+  // 홈 화면 동적 렌더링
+  renderHomeScreen(USER_DATA);
+
+  // 채팅 초기 메시지 업데이트
+  resetChatWelcome(USER_DATA);
+
+  // 유저 플랜 적용
+  applyUserPlan(name);
+
+  // 설희는 3월 캘린더로 초기화
+  if (name === '설희') {
+    calDate = new Date(2026, 2, 1);
+    calSelectedDate = new Date(2026, 2, 1);
+  } else {
+    calDate = new Date(2025, 10, 1);
+    calSelectedDate = new Date(2025, 10, 7);
+  }
+
+  document.getElementById('screen-onboarding').classList.remove('active');
+  document.getElementById('tab-bar').style.display = 'flex';
+  switchTab('home');
+  resetSimTopic();
+  renderSimTags();
+}
+
+// ===== PLAN TIER =====
+const GPS_DATA = {
+  "2025-09-01": {
+    dist: 18100,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"08:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-02": {
+    dist: 17662,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-03": {
+    dist: 18583,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-04": {
+    dist: 18045,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-05": {
+    dist: 18389,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-06": {
+    dist: 27692,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-07": {
+    dist: 30201,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-08": {
+    dist: 18503,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-09": {
+    dist: 18808,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-10": {
+    dist: 19276,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-11": {
+    dist: 17493,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-12": {
+    dist: 19247,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-13": {
+    dist: 25822,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-14": {
+    dist: 28208,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-15": {
+    dist: 19416,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-16": {
+    dist: 18303,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-17": {
+    dist: 17781,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-18": {
+    dist: 19413,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-19": {
+    dist: 18505,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-20": {
+    dist: 28021,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-21": {
+    dist: 28286,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-22": {
+    dist: 18501,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-23": {
+    dist: 18424,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-24": {
+    dist: 19279,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-25": {
+    dist: 17950,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-26": {
+    dist: 18947,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-27": {
+    dist: 28996,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-28": {
+    dist: 27956,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"24:00"},
+    ]
+  },
+  "2025-09-29": {
+    dist: 18869,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+  "2025-09-30": {
+    dist: 18640,
+    places: [
+      {place:"집 (수곡동)", icon:"🏠", from:"00:00", to:"09:00"},
+      {place:"충북대학교", icon:"🏫", from:"09:00", to:"12:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"12:00", to:"13:00"},
+      {place:"충북대학교", icon:"🏫", from:"13:00", to:"17:00"},
+      {place:"집 (수곡동)", icon:"🏠", from:"17:00", to:"24:00"},
+    ]
+  },
+};
+const BASIC_USERS = ['설희'];
+
+function isBasicUser(name) {
+  return BASIC_USERS.includes(name);
+}
+
+// Basic 유저 제한 사항:
+// 1. GPS 이동 기록 카드 숨김
+// 2. 하루 시뮬레이션 횟수 제한 (3회)
+// 3. 하루 상담 횟수 제한 (5회)
+// 4. 추천 실행 플랜 섹션 숨김
+// 5. 건강 분석 카드 숨김 (PSS 포함)
+
+let simCountToday = 0;
+let chatCountToday = 0;
+const SIM_LIMIT_BASIC = 3;
+const CHAT_LIMIT_BASIC = 5;
+
+function applyUserPlan(name) {
+  const basic = isBasicUser(name);
+
+  // GPS 카드 숨김/표시
+  const gpsCard = document.querySelector('.card .card-title .badge-green')?.closest('.card');
+  if (gpsCard) gpsCard.style.display = basic ? 'none' : '';
+
+  // GPS pill (홈 헤더)
+  const gpsPill = document.querySelector('.gps-pill');
+  if (gpsPill) gpsPill.style.display = basic ? 'none' : '';
+
+  // 건강 카드 숨김/표시
+  const healthCard = document.getElementById('stress-card')?.closest('.card');
+  if (healthCard) healthCard.style.display = basic ? 'none' : '';
+
+  // ✨ 여기서 플랜 이름과 텍스트를 수정합니다!
+  const planType = document.getElementById('plan-type-text');
+  const planFeatures = document.getElementById('plan-features-text');
+  
+  if (planType) {
+    // Basic일 때의 텍스트도 대문자로 깔끔하게
+    planType.textContent = basic ? 'BASIC ☁️' : 'PRO ✨';
+  }
+  
+  if (planFeatures) {
+    if (basic) {
+      // 👉 요청하신 텍스트로 변경!
+      planFeatures.textContent = '캘린더 · 재무 분석 · 하루 시뮬레이션 3회 · 하루 AI 상담 5회';
+    } else {
+      planFeatures.textContent = 'GPS 자동수집 · 무제한 시뮬레이션 · 건강 분석 · 추천 실행 플랜';
+    }
+  }
+ const planPrice = document.getElementById('plan-price-text');
+  const planUnit = document.getElementById('plan-price-unit');
+  if (planPrice) planPrice.textContent = basic ? '무료' : '9,900';
+  if (planUnit) planUnit.textContent = basic ? '' : '원/월';
+  
+  // 프로필 탭 GPS 위치 수집 / 갤럭시워치 연동 상태
+  const gpsStatusEl = document.getElementById('profile-gps-status');
+  const gpsBadgeEl = document.getElementById('profile-gps-badge');
+  const watchStatusEl = document.getElementById('profile-watch-status');
+  const watchBadgeEl = document.getElementById('profile-watch-badge');
+  if (basic) {
+    if (gpsStatusEl) gpsStatusEl.textContent = 'PRO 플랜 전용 기능';
+    if (gpsBadgeEl) { gpsBadgeEl.textContent = '연동 불가'; gpsBadgeEl.className = 'badge badge-red'; }
+    if (watchStatusEl) watchStatusEl.textContent = 'PRO 플랜 전용 기능';
+    if (watchBadgeEl) { watchBadgeEl.textContent = '연동 불가'; watchBadgeEl.className = 'badge badge-red'; }
+  } else {
+    if (gpsStatusEl) gpsStatusEl.textContent = '10분마다 자동 저장 중';
+    if (gpsBadgeEl) { gpsBadgeEl.textContent = '활성'; gpsBadgeEl.className = 'badge badge-green'; }
+    if (watchStatusEl) watchStatusEl.textContent = '수면·심박수 연동';
+    if (watchBadgeEl) { watchBadgeEl.textContent = '미연동'; watchBadgeEl.className = 'badge badge-amber'; }
+    }const toggleGps = document.getElementById('toggle-gps');
+  if (toggleGps) {
+    if (basic) toggleGps.classList.add('off');
+    else toggleGps.classList.remove('off');
+  }
+
+  // 카운터 리셋
+  simCountToday = 0;
+  chatCountToday = 0;
+}
+
+function renderHomeScreen(d) {
+  const fin = d.finance;
+  const isPlus = fin.balance >= 0;
+  const balColor = isPlus ? '#34d399' : '#f87171';
+  const balText = (isPlus ? '+' : '-') + Math.abs(fin.balance).toLocaleString() + '원';
+
+  // 헤더
+  document.getElementById('home-month-label').textContent = `${d.month} · 데이터 분석 완료`;
+  document.getElementById('home-location-pill').textContent = d.location || '위치';
+
+  // 재무 카드
+  document.getElementById('fin-label').textContent = `${d.month.replace('년','년 ')} 여유 자금`;
+  const finAmtEl = document.getElementById('fin-amount');
+  finAmtEl.textContent = balText;
+  finAmtEl.style.color = balColor;
+  document.getElementById('fin-income').textContent = '+' + fin.totalIncome.toLocaleString() + '원';
+  document.getElementById('fin-expense').textContent = '-' + fin.totalExpense.toLocaleString() + '원';
+  const savingRate = Math.round(((fin.totalIncome - fin.totalExpense) / fin.totalIncome) * 100);
+  const rateEl = document.getElementById('fin-rate');
+  rateEl.textContent = savingRate + '%';
+  rateEl.style.color = savingRate >= 0 ? '#34d399' : '#fbbf24';
+
+  // 카테고리 바
+  const cats = fin.categories;
+  const maxVal = Math.max(...Object.values(cats));
+  const catColors = ['#f87171','#fbbf24','#818cf8','#f472b6','#34d399','#60a5fa','#a78bfa'];
+  const catContainer = document.getElementById('cat-bars-container');
+  catContainer.innerHTML = '';
+  Object.entries(cats).forEach(([catName, val], i) => {
+    const pct = Math.round((val / maxVal) * 100);
+    catContainer.innerHTML += `
+      <div class="cat-row">
+        <span class="cat-name">${catName}</span>
+        <div class="cat-bar-wrap"><div class="cat-bar-fill" style="width:${pct}%;background:${catColors[i % catColors.length]};"></div></div>
+        <span class="cat-amount">${val.toLocaleString()}원</span>
+      </div>`;
+  });
+
+  // 건강 데이터
+  document.getElementById('health-sleep-val').textContent = d.health.sleep + 'h';
+  document.getElementById('health-exercise-val').textContent = d.health.exercise;
+  document.getElementById('health-commute-val').textContent = d.health.commute + 'h';
+
+  // 애플 헬스케어 카드 렌더링 (PRO 전용)
+  renderAppleHealthCard(d);
+
+  // Apple Health 프로필 행 표시 제어
+  const ahRow = document.getElementById('profile-apple-health-row');
+  if (ahRow) ahRow.style.display = (d.appleHealth && !isBasicUser(d.name)) ? '' : 'none';
+
+  // 프로필 연동 현황
+  const tossStatus = document.getElementById('profile-toss-status');
+  if (tossStatus) {
+    const txCount = (fin.recentTx || []).length;
+    tossStatus.textContent = `${d.month} · ${txCount}건+ 거래 연동됨`;
+  }
+
+  // GPS 타임라인 렌더링 (지수 프로 전용)
+  const gpsContainer = document.getElementById('gps-timeline-container');
+  if (gpsContainer && !isBasicUser(d.name)) {
+    const today = '2025-09-01'; // 기본 날짜 (9월 1일)
+    const dayData = GPS_DATA[today];
+    gpsContainer.innerHTML = '';
+    if (dayData) {
+      dayData.places.forEach(seg => {
+        const timeText = seg.from === '00:00' ? `${seg.to} 까지 체류` : `${seg.from} 도착`;
+        gpsContainer.innerHTML += `
+          <div class="gps-item">
+            <div class="gps-dot-wrap" style="background:rgba(99,102,241,0.15);">${seg.icon}</div>
+            <div class="gps-info">
+              <div class="gps-place">${seg.place}</div>
+              <div class="gps-time">${timeText}</div>
+            </div>
+          </div>`;
+      });
+      // 이동거리 표시
+      gpsContainer.innerHTML += `<div style="font-size:11px;color:var(--text3);margin-top:8px;">📍 오늘 총 이동 ${(dayData.dist/1000).toFixed(1)}km</div>`;
+    }
+  }
+
+  // 최근 거래내역
+  const txContainer = document.getElementById('tx-list-container');
+  txContainer.innerHTML = '';
+  (fin.recentTx || []).forEach(tx => {
+    const isIn = tx.amount > 0;
+    const sign = isIn ? '+' : '-';
+    const cls = isIn ? 'in' : 'out';
+    const bgColor = isIn ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)';
+    txContainer.innerHTML += `
+      <div class="tx-item">
+        <div class="tx-icon" style="background:${bgColor};">${tx.icon}</div>
+        <div class="tx-info">
+          <div class="tx-name">${tx.name}</div>
+          <div class="tx-cat">${tx.cat}</div>
+        </div>
+        <div class="tx-amount ${cls}">${sign}${Math.abs(tx.amount).toLocaleString()}원</div>
+      </div>`;
+  });
+}
+
+function resetChatWelcome(d) {
+  const messages = document.getElementById('chat-messages');
+  const fin = d.finance;
+  const isPlus = fin.balance >= 0;
+  const balMsg = isPlus
+    ? `이번 달 ${fin.balance.toLocaleString()}원 흑자예요 🎉`
+    : `이번 달 지출이 수입보다 ${Math.abs(fin.balance).toLocaleString()}원 많았는데`;
+  messages.innerHTML = `
+    <div class="msg ai">
+      <div class="msg-bubble">안녕하세요! 저는 ${d.name}님의 실제 오픈 뱅킹 데이터와 생활 패턴을 알고 있어요 📊<br><br>${balMsg}, 궁금한 점이나 고민 있으면 편하게 물어보세요!</div>
+      <div class="msg-time">지금</div>
+    </div>`;
+  chatHistory = [];
+}
+
+function confirmDeleteAccount() {
+  const overlay = document.getElementById('delete-overlay');
+  overlay.style.display = 'flex';
+  document.querySelectorAll('#delete-pin-wrap .pin-input').forEach(i => i.value = '');
+  document.getElementById('delete-error').textContent = '';
+  setupPinInputs('delete-pin-wrap');
+  document.querySelector('#delete-pin-wrap .pin-input').focus();
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-overlay').style.display = 'none';
+}
+
+function doDeleteAccount() {
+  const pin = getPins('delete-pin-wrap');
+  const current = localStorage.getItem('lifeedit_current');
+  const saved = JSON.parse(localStorage.getItem('lifeedit_users') || '{}');
+
+  if (pin.length < 4) { document.getElementById('delete-error').textContent = 'PIN 4자리를 입력해주세요'; return; }
+  if (!saved[current] || saved[current].pin !== pin) {
+    document.getElementById('delete-error').textContent = 'PIN이 틀렸어요 🔒';
+    document.querySelectorAll('#delete-pin-wrap .pin-input').forEach(i => { i.classList.add('error'); setTimeout(() => i.classList.remove('error'), 400); i.value = ''; });
+    document.querySelector('#delete-pin-wrap .pin-input').focus();
+    return;
+  }
+
+  // 계정 삭제
+  delete saved[current];
+  localStorage.setItem('lifeedit_users', JSON.stringify(saved));
+  localStorage.removeItem('lifeedit_current');
+
+  closeDeleteModal();
+  doLogout();
+}
+
+function checkLoginHint(name) {
+  const hint = document.getElementById('login-hint');
+  const trimmed = name.trim();
+  if (!trimmed) { hint.style.display = 'none'; return; }
+  if (ALL_USERS_DATA[trimmed]) {
+    hint.style.display = 'block';
+    hint.style.background = 'rgba(52,211,153,0.08)';
+    hint.style.color = 'var(--green)';
+    hint.textContent = `✅ "${trimmed}" 님의 금융 데이터가 있어요`;
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function checkPresetHint(name) {
+  const hint = document.getElementById('preset-hint');
+  const trimmed = name.trim();
+  if (!trimmed) { hint.style.display = 'none'; return; }
+  if (ALL_USERS_DATA[trimmed]) {
+    hint.style.display = 'block';
+    hint.style.background = 'rgba(99,102,241,0.12)';
+    hint.style.color = 'var(--accent2)';
+    hint.textContent = `✨ "${trimmed}" 님의 금융 데이터가 연결되어 있어요!`;
+  } else {
+    hint.style.display = 'block';
+    hint.style.background = 'rgba(148,163,184,0.08)';
+    hint.style.color = 'var(--text3)';
+    hint.textContent = `새 계정으로 시작해요 (기본 데이터 적용)`;
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('lifeedit_current');
+  // 화면 초기화
+  document.getElementById('tab-bar').style.display = 'none';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-onboarding').classList.add('active');
+  // 입력창 비우기
+  document.getElementById('login-name').value = '';
+  document.getElementById('login-hint').style.display = 'none';
+  document.querySelectorAll('#login-pin-wrap .pin-input').forEach(i => i.value = '');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('signup-name').value = '';
+  document.getElementById('preset-hint').style.display = 'none';
+  switchAuthTab('login');
+  chatHistory = [];
+}
+
+function selectChip(el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedWorry = el.textContent;
+}
+
+async function startApp() { /* legacy no-op */ }
+
+// ===== TAB SWITCH =====
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (tab === 'calendar') renderCalendar();
+}
+
+// ===== SIMULATION =====
+const SIM_PAIRS = [
+  { emoji: '✋', topic: '알바', a: '알바 그만두기', b: '알바 계속하기' },
+  { emoji: '🏠', topic: '자취', a: '자취 시작하기', b: '자취 안 하기' },
+  { emoji: '📚', topic: '휴학', a: '휴학하기', b: '계속 다니기' },
+  { emoji: '🔄', topic: '전과', a: '전과하기', b: '전과 안 하기' },
+  { emoji: '🏋️', topic: '다이어트', a: '다이어트 시작', b: '현재 유지' },
+  { emoji: '💰', topic: '저축', a: '지출 줄이기', b: '현재대로 쓰기' },
+  { emoji: '✏️', topic: '직접 입력', a: '', b: '' },
+];
+
+let selectedPair = null;
+
+function renderSimTags() {
+  const list = document.getElementById('sim-topic-list');
+  list.innerHTML = '';
+  SIM_PAIRS.forEach((pair, i) => {
+    const btn = document.createElement('button');
+    const isCustom = pair.topic === '직접 입력';
+    btn.style.cssText = `
+      width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);
+      background:var(--surface);color:var(--text);
+      font-family:'Pretendard',sans-serif;font-size:14px;font-weight:600;
+      cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;
+      transition:all 0.15s;
+    `;
+    btn.innerHTML = `
+      <span style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">${pair.emoji}</span>
+        <span>${pair.topic}</span>
+      </span>
+      <span style="font-size:12px;color:var(--text3);">${isCustom ? '직접 쓰기 ✏️' : `${pair.a} vs ${pair.b}`}</span>
+    `;
+    btn.onclick = () => selectSimPair(i);
+    list.appendChild(btn);
+  });
+}
+
+function selectSimPair(i) {
+  const pair = SIM_PAIRS[i];
+  selectedPair = pair;
+  const isCustom = pair.topic === '직접 입력';
+
+  document.getElementById('sim-topic-list').style.display = 'none';
+  document.getElementById('sim-result').classList.add('hidden');
+
+  if (isCustom) {
+    document.getElementById('sim-custom-wrap').style.display = 'block';
+    document.getElementById('sim-vs-card').style.display = 'none';
+    document.getElementById('custom-a').value = '';
+    document.getElementById('custom-b').value = '';
+  } else {
+    document.getElementById('sim-custom-wrap').style.display = 'none';
+    document.getElementById('sim-vs-card').style.display = 'block';
+    document.getElementById('vs-text-a').textContent = pair.a;
+    document.getElementById('vs-text-b').textContent = pair.b;
+  }
+}
+
+function resetSimTopic() {
+  selectedPair = null;
+  document.getElementById('sim-topic-list').style.display = 'flex';
+  document.getElementById('sim-topic-list').style.flexDirection = 'column';
+  document.getElementById('sim-vs-card').style.display = 'none';
+  document.getElementById('sim-custom-wrap').style.display = 'none';
+  document.getElementById('sim-result').classList.add('hidden');
+}
+
+function selectChoice(choice) { /* legacy no-op */ }
+
+async function runSimulation() {
+  let choiceA, choiceB;
+
+  // Basic 유저 시뮬레이션 횟수 제한
+  if (isBasicUser(USER_DATA.name)) {
+    if (simCountToday >= SIM_LIMIT_BASIC) {
+      alert(`Basic 플랜은 하루 ${SIM_LIMIT_BASIC}회까지 시뮬레이션할 수 있어요.\nPro로 업그레이드하면 무제한으로 이용 가능해요! 🚀`);
+      return;
+    }
+    simCountToday++;
+  }
+
+  if (!selectedPair) {
+    alert('먼저 주제를 선택해주세요!'); return;
+  }
+  if (selectedPair.topic === '직접 입력') {
+    choiceA = document.getElementById('custom-a').value.trim();
+    choiceB = document.getElementById('custom-b').value.trim();
+    if (!choiceA || !choiceB) { alert('두 선택지를 모두 입력해주세요!'); return; }
+  } else {
+    choiceA = selectedPair.a;
+    choiceB = selectedPair.b;
+  }
+
+  document.getElementById('sim-loading').classList.remove('hidden');
+  document.getElementById('sim-result').classList.add('hidden');
+
+  const ths = document.querySelectorAll('.compare-table th');
+  if (ths[1]) ths[1].textContent = choiceA;
+  if (ths[2]) ths[2].textContent = choiceB;
+
+  const prompt = `${USER_DATA.name}님의 실제 데이터를 바탕으로, "${choiceA}" vs "${choiceB}" 선택을 비교 분석해줘.
+
+반드시 아래 JSON 형식으로만 답변해줘. 마크다운(\`\`\`) 없이 순수 JSON 텍스트만 출력해.
+{
+  "analysis": "실제 수치를 언급하며 2-3문장으로 핵심 조언 (공감하는 어조)",
+  "table": [
+    { 
+      "item": "비교 항목 (예: 월 수입, 수면, 스트레스 등 5개)", 
+      "valA": "A선택 결과 (최대 20자 이내로 짧은 단답형. 예: '+15만원', '건강 식품 등 지출 가능성', '수면 부족 등 패턴 변화 가능성', '스트레스↑')", 
+      "clsA": "val-good, val-bad, val-warn, val-neu 중 택1", 
+      "valB": "B선택 결과 (최대 15자 이내로 짧은 단답형. 예: '변동 없음', '유지', '-5만원', '스트레스 요인 적음')", 
+      "clsB": "val-good, val-bad, val-warn, val-neu 중 택1" 
+    }
+  ]
+,
+  "plansA": ["선택 A를 위한 앱 내 실행 플랜 1", "선택 A를 위한 앱 내 실행 플랜 2"],
+  "plansB": ["선택 B를 위한 앱 내 실행 플랜 1", "선택 B를 위한 앱 내 실행 플랜 2"]
+}
+
+[중요 조건]
+plansA와 plansB에 들어갈 추천 플랜은 "동아리 가입", "스터디 참석" 같은 외부 활동이 아니라, **반드시 앱 내 기능(예: 예산 상한 알림 켜기, AI와 심층 상담하기, 스트레스 PSS 측정 알림 켜기, 목표 수면시간 저장하기 등)으로 즉시 버튼을 눌러 실행할 수 있는 내용**으로 각각 2개씩 작성해.`;
+
+// 기존 try 블록 내용을 아래처럼 싹 바꿔주세요.
+  try {
+    let resultStr = await callGemini(prompt);
+    
+    // AI가 혹시나 ```json 마크다운을 붙여줄 경우를 대비해 떼어내는 안전장치
+    resultStr = resultStr.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    // JSON 문자열을 자바스크립트 객체로 변환
+    const parsedData = JSON.parse(resultStr);
+    
+    // 1. AI 분석 텍스트 업데이트
+    document.getElementById('ai-result-text').textContent = parsedData.analysis;
+    
+    // 2. 미래 변화 표(Table) 업데이트
+    const tbody = document.getElementById('sim-table-body');
+    tbody.innerHTML = ''; // 기존 내용 싹 비우기
+    
+    parsedData.table.forEach(row => {
+      tbody.innerHTML += `<tr>
+        <td>${row.item}</td>
+        <td class="${row.clsA}">${row.valA}</td>
+        <td class="${row.clsB}">${row.valB}</td>
+      </tr>`;
+    });
+  // --- ⭐️ 여기서부터 추가: A/B 실행 플랜 동적 생성 ---
+    const actionCard = document.getElementById('action-plan-card');
+    if (actionCard && parsedData.plansA && parsedData.plansB) {
+      actionCard.innerHTML = `
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; padding: 0 4px;">선택 A (${choiceA}) 추천 플랜</div>
+          ${parsedData.plansA.map((plan, idx) => `
+            <div class="action-item">
+              <div class="action-num">${idx + 1}</div>
+              <div style="flex:1;">
+                <div class="action-text">${plan}</div>
+                <div class="action-btns">
+                  <button class="action-btn-sm pri">알림 설정</button>
+                  <button class="action-btn-sm sec">나중에</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+          <div style="font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; padding: 0 4px;">선택 B (${choiceB}) 추천 플랜</div>
+          ${parsedData.plansB.map((plan, idx) => `
+            <div class="action-item">
+              <div class="action-num">${idx + 1}</div>
+              <div style="flex:1;">
+                <div class="action-text">${plan}</div>
+                <div class="action-btns">
+                  <button class="action-btn-sm pri">기록하기</button>
+                  <button class="action-btn-sm sec">나중에</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    // --- 추가 끝 ---
+  }catch(e) {
+    const isPlus = USER_DATA.finance.balance >= 0;
+    const balMsg = isPlus
+      ? `이번 달 ${USER_DATA.finance.balance.toLocaleString()}원 흑자 상황에서`
+      : `이번 달 ${Math.abs(USER_DATA.finance.balance).toLocaleString()}원 적자 상황에서`;
+    document.getElementById('ai-result-text').textContent =
+      `${balMsg} "${choiceA}" vs "${choiceB}" 고민, 쉽지 않죠. 실제 수치를 보면 지금이 집중할 타이밍일 수 있어요. 지출 패턴을 조금만 조정해도 의미 있는 변화가 생길 것 같아요.`;
+  }
+
+  await sleep(500);
+  document.getElementById('sim-loading').classList.add('hidden');
+  document.getElementById('sim-result').classList.remove('hidden');
+
+  // Basic 유저 - 추천 실행 플랜 숨김
+  const apSection = document.getElementById('action-plan-section');
+  const apCard = document.getElementById('action-plan-card');
+  if (apSection && apCard) {
+    const hide = isBasicUser(USER_DATA.name);
+    apSection.style.display = hide ? 'none' : '';
+    apCard.style.display = hide ? 'none' : '';
+  }
+}
+
+// ===== INIT =====
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => {
+  // PIN 입력 자동 포커스 이동 설정
+  setupPinInputs('login-pin-wrap');
+  setupPinInputs('signup-pin-wrap');
+  setupPinInputs('signup-pin-confirm-wrap');
+
+  const splash = document.getElementById('splash-screen');
+  
+  // 1.5초(1500ms) 대기 후 스플래시 화면 페이드아웃
+  setTimeout(() => {
+    splash.style.opacity = '0';
+    
+    // 페이드아웃 애니메이션(0.5초) 끝난 후 로직 실행
+    setTimeout(() => {
+      splash.style.display = 'none';
+      
+      const current = localStorage.getItem('lifeedit_current');
+      if (current) {
+        enterApp(current);
+      } else {
+        // 로그인 안 되어있으면 온보딩(프로필 선택) 화면 표시
+        document.getElementById('screen-onboarding').classList.add('active');
+        showProfileSelect(); 
+      }
+    }, 500);
+  }, 1000); 
+});
+
+
+// ===== CHAT =====
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Basic 유저 상담 횟수 제한
+  if (isBasicUser(USER_DATA.name)) {
+    if (chatCountToday >= CHAT_LIMIT_BASIC) {
+      addMessage('ai', `Basic 플랜은 하루 ${CHAT_LIMIT_BASIC}회까지 AI 상담을 이용할 수 있어요. Pro로 업그레이드하면 무제한으로 이용 가능해요! 🚀`);
+      return;
+    }
+    chatCountToday++;
+  }
+  
+  input.value = '';
+  input.style.height = 'auto';
+  
+  // 사용자 메시지
+  appendMessage('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  
+  // 타이핑 인디케이터
+  const typingId = appendTyping();
+  
+  try {
+    const reply = await callGeminiChat(chatHistory);
+    removeTyping(typingId);
+    appendMessage('ai', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch(e) {
+    removeTyping(typingId);
+    appendMessage('ai', '잠시 연결이 불안정해요. Gemini API 상태를 확인해주세요!');
+  }
+  
+  scrollChatBottom();
+}
+
+function appendMessage(role, text) {
+  const messages = document.getElementById('chat-messages');
+  const now = new Date();
+  const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+  
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `<div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${time}</div>`;
+  messages.appendChild(div);
+  scrollChatBottom();
+  return div;
+}
+
+function appendTyping() {
+  const messages = document.getElementById('chat-messages');
+  const id = 'typing-' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = id;
+  div.innerHTML = `<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  messages.appendChild(div);
+  scrollChatBottom();
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function scrollChatBottom() {
+  const messages = document.getElementById('chat-messages');
+  setTimeout(() => messages.scrollTop = messages.scrollHeight, 100);
+}
+
+// ===== GEMINI API =====
+async function callGemini(userMessage) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+      contents: [{
+        role: 'user',
+        parts: [{ text: userMessage }]
+      }]
+    })
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    console.error("Gemini API Error:", data);
+    throw new Error(data.error?.message || 'API 통신 에러');
+  }
+  
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function callGeminiChat(history) {
+  const formattedHistory = history.map(msg => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }]
+  }));
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+      contents: formattedHistory
+    })
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    console.error("Gemini API Error:", data);
+    throw new Error(data.error?.message || 'API 통신 에러');
+  }
+  
+  return data.candidates[0].content.parts[0].text;
+}
+
+// ===== PSS 스트레스 검사 =====
+const PSS_QUESTIONS = [
+  { q: "예상치 못한 일이 일어나서 기분이 상했나요?", reverse: false },
+  { q: "중요한 일들을 통제할 수 없다는 느낌이 들었나요?", reverse: false },
+  { q: "긴장되거나 스트레스를 받는다고 느꼈나요?", reverse: false },
+  { q: "해야 할 일들을 성공적으로 처리했다는 자신감이 있었나요?", reverse: true },
+  { q: "삶에서 일어나는 중요한 변화들을 효과적으로 다루었나요?", reverse: true },
+  { q: "개인적인 문제들을 해결할 능력이 있다는 느낌이 들었나요?", reverse: true },
+  { q: "원하는 방식대로 일이 진행되고 있다고 느꼈나요?", reverse: true },
+  { q: "해야 할 일들이 너무 많아서 감당하기 어렵다고 느꼈나요?", reverse: false },
+  { q: "화가 나는 일들을 잘 통제할 수 있었나요?", reverse: true },
+  { q: "어려운 일들이 너무 많이 쌓여서 극복할 수 없다고 느꼈나요?", reverse: false },
+];
+const PSS_OPTS = ['전혀 없었다', '거의 없었다', '가끔 있었다', '자주 있었다', '매우 자주 있었다'];
+
+let pssAnswers = new Array(10).fill(-1);
+let pssCurrent = 0;
+
+function openPSS() {
+  pssCurrent = 0;
+  pssAnswers = new Array(10).fill(-1);
+  document.getElementById('pss-quiz-view').classList.remove('hidden');
+  document.getElementById('pss-result-view').classList.add('hidden');
+  renderPSSQ();
+  document.getElementById('pss-overlay').classList.add('open');
+}
+
+function closePSS() {
+  document.getElementById('pss-overlay').classList.remove('open');
+}
+
+function closePSSIfOutside(e) {
+  if (e.target === document.getElementById('pss-overlay')) closePSS();
+}
+
+function renderPSSQ() {
+  const q = PSS_QUESTIONS[pssCurrent];
+  document.getElementById('pss-q-num').textContent = `문항 ${pssCurrent+1} / ${PSS_QUESTIONS.length}`;
+  document.getElementById('pss-q-text').textContent = q.q;
+  document.getElementById('pss-prog').style.width = `${((pssCurrent+1)/PSS_QUESTIONS.length)*100}%`;
+  document.getElementById('pss-prev-btn').style.display = pssCurrent > 0 ? 'block' : 'none';
+  document.getElementById('pss-next-btn').textContent = pssCurrent === PSS_QUESTIONS.length-1 ? '결과 보기' : '다음';
+
+  const opts = document.getElementById('pss-opts');
+  opts.innerHTML = '';
+  PSS_OPTS.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'pss-opt' + (pssAnswers[pssCurrent] === i ? ' selected' : '');
+    btn.innerHTML = `<div class="pss-opt-badge">${i}</div>${label}`;
+    btn.onclick = () => {
+      pssAnswers[pssCurrent] = i;
+      document.querySelectorAll('.pss-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    opts.appendChild(btn);
+  });
+}
+
+function pssNav(dir) {
+  if (dir === 1) {
+    if (pssAnswers[pssCurrent] === -1) {
+      // 선택 안 했으면 흔들기
+      document.getElementById('pss-opts').style.animation = 'none';
+      setTimeout(() => { document.getElementById('pss-opts').style.animation = ''; }, 10);
+      return;
+    }
+    if (pssCurrent === PSS_QUESTIONS.length - 1) {
+      showPSSResult(); return;
+    }
+    pssCurrent++;
+  } else {
+    if (pssCurrent > 0) pssCurrent--;
+  }
+  renderPSSQ();
+}
+
+function showPSSResult() {
+  let total = 0;
+  pssAnswers.forEach((ans, i) => {
+    if (PSS_QUESTIONS[i].reverse) total += (4 - ans);
+    else total += ans;
+  });
+
+  document.getElementById('pss-quiz-view').classList.add('hidden');
+  document.getElementById('pss-result-view').classList.remove('hidden');
+  document.getElementById('pss-final-score').textContent = total;
+
+  // 링 애니메이션
+  const arc = document.getElementById('pss-ring-arc');
+  const pct = total / 40;
+  const offset = 314 - (314 * pct);
+  let color = '#34d399';
+  let title = '낮은 스트레스';
+  let desc = '현재 스트레스 수준이 양호해요. 지금의 생활 리듬을 잘 유지하고 있어요 😊';
+  if (total >= 14 && total <= 26) {
+    color = '#fbbf24'; title = '보통 스트레스';
+    desc = '적당한 스트레스 수준이에요. 수면과 휴식에 좀 더 신경 써보면 좋겠어요 🌙';
+  } else if (total >= 27) {
+    color = '#f87171'; title = '높은 스트레스';
+    desc = '스트레스가 상당히 높은 편이에요. 지금 처한 상황들이 많이 벅차게 느껴지는 거 이해해요. 잠깐 멈추고 나를 돌봐줄 시간이 필요해요 💙';
+  }
+
+  arc.style.stroke = color;
+  setTimeout(() => { arc.style.strokeDashoffset = offset; }, 50);
+
+  document.getElementById('pss-result-title').textContent = `${title} (${total}점)`;
+  document.getElementById('pss-result-desc').textContent = desc;
+
+  // 홈 카드 업데이트
+  const stressDisplay = document.getElementById('stress-display');
+  const stressLabel = document.getElementById('stress-label');
+  const taphint = document.querySelector('.pss-tap-hint');
+  if (stressDisplay) stressDisplay.textContent = `${total}점`;
+  if (stressLabel) {
+    let lvl = total < 14 ? '낮음 ✅' : total < 27 ? '보통 ⚠️' : '높음 🔴';
+    stressLabel.innerHTML = `스트레스 PSS <span style="color:${color};">${lvl}</span>`;
+  }
+  if (taphint) taphint.textContent = '탭하여 재검사 →';
+
+  // USER_DATA 업데이트
+  USER_DATA.health.stress = total;
+}
+
+// ===== CALENDAR =====
+let calDate = new Date(2025, 10, 1); // 2025년 11월
+let calSelectedDate = new Date(2025, 10, 7);
+let calConnected = true;
+
+const SAMPLE_EVENTS = {
+  '2025-11-03': [{ title: '정처기 필기 모의고사', time: '14:00', color: '#6366f1' }],
+  '2025-11-07': [{ title: '충북대 도서관 공부', time: '14:00~17:00', color: '#818cf8' }, { title: '요기요 배달', time: '저녁', color: '#f87171' }],
+  '2025-11-10': [{ title: '국가근로 입금 +372,900원', time: '09:00', color: '#34d399' }],
+  '2025-11-16': [{ title: '올리브영 주문', time: '온라인', color: '#f472b6' }],
+  '2025-11-24': [{ title: '놀유니버스 (SRT)', time: '09:30', color: '#f87171' }, { title: '놀유니버스 티켓 -337,700원', time: '현장', color: '#f87171' }],
+  '2025-11-26': [{ title: '요기요 -71,400원', time: '저녁', color: '#fbbf24' }],
+  '2025-11-28': [{ title: '정처기 진도 65% 달성', time: '오후', color: '#34d399' }],
+};
+
+// 설희 3월 2026 캘린더
+const SEOLHEE_EVENTS = {
+  '2026-03-01': [{ title: '삼일절', time: '공휴일', color: '#f87171' }, { title: '은수 채현 청 학생회', time: '하루', color: '#818cf8' }],
+  '2026-03-02': [{ title: '대체공휴일', time: '공휴일', color: '#f87171' }, { title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-03': [{ title: '1.15', time: '기념일', color: '#f472b6' }],
+  '2026-03-04': [{ title: '와인포차', time: '저녁', color: '#a78bfa' }, { title: '1000일 🎉', time: '기념일', color: '#f472b6' }],
+  '2026-03-05': [{ title: '경첩', time: '절기', color: '#34d399' }, { title: '방송국 송출', time: '하루', color: '#fbbf24' }, { title: '청 회의 6시', time: '18:00', color: '#818cf8' }, { title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-06': [{ title: '와인포차', time: '저녁', color: '#a78bfa' }, { title: '코스모스 방송', time: '하루', color: '#fbbf24' }],
+  '2026-03-07': [{ title: '르엔느뷰티', time: '하루', color: '#f472b6' }, { title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-08': [{ title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-09': [{ title: '방송국 녹화', time: '하루', color: '#fbbf24' }, { title: '청 회식', time: '저녁', color: '#818cf8' }],
+  '2026-03-10': [{ title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-11': [{ title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-12': [{ title: '줌 회의 1시', time: '13:00', color: '#60a5fa' }, { title: '회의 7시', time: '19:00', color: '#818cf8' }, { title: '방송국 회의', time: '하루', color: '#fbbf24' }],
+  '2026-03-13': [{ title: '대면 면접', time: '하루', color: '#f87171' }, { title: '택배 붙이기', time: '하루', color: '#94a3b8' }, { title: '대면 면접 (오후)', time: '오후', color: '#f87171' }],
+  '2026-03-14': [{ title: '대면 면접', time: '하루', color: '#f87171' }, { title: '라디오 리허설', time: '하루', color: '#fbbf24' }, { title: '코스모스 방송', time: '하루', color: '#fbbf24' }, { title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-15': [{ title: '생산관리 과제', time: '하루', color: '#34d399' }, { title: '팀플 정리', time: '하루', color: '#60a5fa' }],
+  '2026-03-16': [{ title: '방송국', time: '하루', color: '#fbbf24' }, { title: '6시 팀플', time: '18:00', color: '#60a5fa' }],
+  '2026-03-17': [{ title: '청 리스트', time: '하루', color: '#818cf8' }],
+  '2026-03-18': [{ title: 'Main 사전녹음', time: '하루', color: '#fbbf24' }, { title: '방송국 연습', time: '하루', color: '#fbbf24' }, { title: 'Ppt', time: '하루', color: '#60a5fa' }, { title: '청 회의 6시', time: '18:00', color: '#818cf8' }],
+  '2026-03-19': [{ title: '2.1', time: '기념일', color: '#f472b6' }, { title: '방송국 송출', time: '하루', color: '#fbbf24' }, { title: 'Ppt', time: '하루', color: '#60a5fa' }, { title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-20': [{ title: '춘분', time: '절기', color: '#34d399' }, { title: 'Ppt', time: '하루', color: '#60a5fa' }, { title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-21': [{ title: 'Erp과제', time: '하루', color: '#818cf8' }, { title: '팀플 수정', time: '하루', color: '#60a5fa' }, { title: '병결 신청', time: '하루', color: '#94a3b8' }, { title: '코스모스 방송', time: '하루', color: '#fbbf24' }, { title: '생산관리 과제', time: '하루', color: '#34d399' }, { title: '라디오 리허설', time: '하루', color: '#fbbf24' }],
+  '2026-03-22': [{ title: '채은이 롯데', time: '하루', color: '#f472b6' }, { title: '6시 업로드', time: '18:00', color: '#fbbf24' }],
+  '2026-03-23': [{ title: '방송국 녹화', time: '하루', color: '#fbbf24' }],
+  '2026-03-24': [{ title: '인자관 발대식', time: '하루', color: '#818cf8' }, { title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-25': [{ title: '와인포차', time: '저녁', color: '#a78bfa' }],
+  '2026-03-26': [{ title: '유노랑', time: '하루', color: '#f472b6' }],
+  '2026-03-27': [{ title: '생산관리 과제', time: '하루', color: '#34d399' }, { title: '와인포차', time: '저녁', color: '#a78bfa' }, { title: '코스모스 방송', time: '하루', color: '#fbbf24' }, { title: '라디오 리허설', time: '하루', color: '#fbbf24' }],
+  '2026-03-28': [{ title: 'Erp과제', time: '하루', color: '#818cf8' }, { title: '4시 경영대', time: '16:00', color: '#60a5fa' }, { title: '민서랑', 초하루: '하루', color: '#f472b6' }],
+  '2026-03-29': [{ title: '대중문화 과제', time: '하루', color: '#34d399' }, { title: '유노랑', time: '하루', color: '#f472b6' }, { title: '6시 업로드', time: '18:00', color: '#fbbf24' }],
+  '2026-03-30': [{ title: '방송국 송출', time: '하루', color: '#fbbf24' }, { title: '걸스데이', time: '하루', color: '#f472b6' }, { title: '청 5시 회의', time: '17:00', color: '#818cf8' }, { title: '방송국 회의', time: '하루', color: '#fbbf24' }],
+  '2026-03-31': [{ title: '일일호프 준비', time: '하루', color: '#818cf8' }, { title: '와인포차', time: '저녁', color: '#a78bfa' }],
+};
+
+// 지수 3월 2026 캘린더
+const JISU_MARCH_EVENTS = {
+  '2026-03-01': [{ title: '멜론 결제 해제', time: '하루', color: '#f87171' }, { title: '삼일절', time: '공휴일', color: '#f87171' }],
+  '2026-03-02': [{ title: '대체공휴일', time: '공휴일', color: '#f87171' }, { title: '쉬는 날 (삼일절)', time: '하루', color: '#94a3b8' }],
+  '2026-03-04': [{ title: '근로시간', time: '10:00~12:00', color: '#34d399' }],
+  '2026-03-05': [{ title: '눈썹 리터치 예약 전화', time: '하루', color: '#f472b6' }],
+  '2026-03-07': [{ title: '미래에셋 ISA 계좌 개설', time: '하루', color: '#60a5fa' }],
+  '2026-03-10': [{ title: '주민센터 방문', time: '오전', color: '#fbbf24' }],
+  '2026-03-11': [{ title: '소용돌이 밴드 제출곡 미완', time: '하루', color: '#818cf8' }],
+  '2026-03-12': [{ title: '푸른소리 오디션', time: '하루', color: '#a78bfa' }],
+  '2026-03-26': [{ title: '롤다이스 모임', time: '19:30', color: '#60a5fa' }],
+  '2026-03-27': [{ title: 'CGV 코난', time: '18:00', color: '#f87171' }],
+  '2026-03-29': [{ title: '토익시험 (대성여중)', time: '09:00', color: '#6366f1' }],
+  '2026-03-30': [{ title: '생산관리 발표', time: '하루', color: '#34d399' }],
+  '2026-03-31': [{ title: '예비군 집결', time: '07:40', color: '#fbbf24' }],
+  '2026-04-03': [{ title: '피부과', time: '09:00', color: '#f472b6' }],
+  '2026-04-04': [{ title: '석우문화체육관', time: '18:00', color: '#818cf8' }],
+};
+
+function getUserCalEvents() {
+  if (USER_DATA && USER_DATA.name === '설희') return SEOLHEE_EVENTS;
+  if (USER_DATA && USER_DATA.name === '지수') return { ...SAMPLE_EVENTS, ...JISU_MARCH_EVENTS };
+  return SAMPLE_EVENTS;
+}
+const GOOGLE_EVENTS = {
+  '2025-11-05': [{ title: '팀 프로젝트 회의', time: '15:00', color: '#4285F4' }],
+  '2025-11-12': [{ title: '국가근로 근무', time: '10:00~14:00', color: '#34A853' }],
+  '2025-11-19': [{ title: '국가근로 근무', time: '10:00~14:00', color: '#34A853' }],
+  '2025-11-25': [{ title: '정처기 스터디', time: '13:00', color: '#EA4335' }],
+  '2025-11-30': [{ title: '기말 과제 마감', time: '23:59', color: '#FBBC04' }],
+};
+
+function getDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderCalendar() {
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  document.getElementById('cal-month-label').textContent = `${year}년 ${month+1}월`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = new Date();
+  const baseEvents = getUserCalEvents();
+  const allEvents = calConnected ? {...baseEvents, ...GOOGLE_EVENTS} : baseEvents;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // 이전 달 날짜
+  const prevDays = new Date(year, month, 0).getDate();
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    cell.innerHTML = `<span class="cal-day">${prevDays - i}</span>`;
+    grid.appendChild(cell);
+  }
+
+  // 현재 달
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    const dateObj = new Date(year, month, d);
+    const key = getDateKey(dateObj);
+    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===d;
+    const isSelected = calSelectedDate.getFullYear()===year && calSelectedDate.getMonth()===month && calSelectedDate.getDate()===d;
+    const hasEv = !!allEvents[key];
+
+    cell.className = 'cal-cell' + (isToday ? ' today' : '') + (hasEv ? ' has-event' : '');
+    if (isSelected && !isToday) cell.style.background = 'rgba(99,102,241,0.2)';
+    if (isSelected) cell.style.border = '1.5px solid var(--accent)';
+    cell.innerHTML = `<span class="cal-day" style="${d===0||dateObj.getDay()===0?'color:#f87171;':''}">${d}</span>`;
+    cell.onclick = () => { calSelectedDate = dateObj; renderCalendar(); renderDayEvents(); };
+    grid.appendChild(cell);
+  }
+
+  // 다음 달
+  const remaining = 42 - (firstDay + daysInMonth);
+  for (let d = 1; d <= remaining; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    cell.innerHTML = `<span class="cal-day">${d}</span>`;
+    grid.appendChild(cell);
+  }
+
+  renderDayEvents();
+}
+
+function renderDayEvents() {
+  const key = getDateKey(calSelectedDate);
+  const baseEvents = getUserCalEvents();
+  const allEvents = calConnected ? {...baseEvents, ...GOOGLE_EVENTS} : baseEvents;
+  const events = allEvents[key] || [];
+  const label = document.getElementById('cal-selected-label');
+  const list = document.getElementById('cal-events-list');
+
+  const today = new Date();
+  const isToday = getDateKey(today) === key;
+  label.textContent = isToday ? '오늘의 일정' : `${calSelectedDate.getMonth()+1}월 ${calSelectedDate.getDate()}일 일정`;
+
+  if (events.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:14px;">일정이 없어요</div>';
+  } else {
+    list.innerHTML = events.map(ev => `
+      <div class="cal-event-item">
+        <div class="cal-event-dot" style="background:${ev.color};"></div>
+        <div class="cal-event-info">
+          <div class="cal-event-title">${ev.title}</div>
+          <div class="cal-event-time">${ev.time}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function calNav(dir) {
+  calDate.setMonth(calDate.getMonth() + dir);
+  renderCalendar();
+}
+
+function connectCalendar() {
+  const banner = document.getElementById('cal-connect-banner');
+  const connBanner = document.getElementById('cal-connected-banner');
+  banner.innerHTML = '<div style="text-align:center;width:100%;font-size:13px;color:var(--text2);">🔄 계정 연동 중...</div>';
+  setTimeout(() => {
+    calConnected = true;
+    banner.style.display = 'none';
+    connBanner.style.display = 'flex';
+    // 프로필의 캘린더 뱃지도 업데이트
+    renderCalendar();
+  }, 1500);
+}
+
+// 캘린더 탭 클릭 시 초기화 - switchTab 내부에서 처리
+
+// ===== APPLE HEALTH =====
+function renderAppleHealthCard(d) {
+  const ahCard = document.getElementById('apple-health-card');
+  if (!d || !d.appleHealth) { if(ahCard) ahCard.style.display='none'; return; }
+  if(ahCard) ahCard.style.display = '';
+
+  const ah = d.appleHealth;
+  const today = ah.daily[ah.daily.length - 1]; // 마지막 날 = 오늘(3/31)
+
+  // 심박수
+  const hrEl = document.getElementById('ah-hr-val');
+  const hrSub = document.getElementById('ah-hr-sub');
+  if (hrEl) { hrEl.textContent = today.hr + ' BPM'; hrEl.className = 'ah-val'; }
+  if (hrSub) hrSub.textContent = `월 평균 ${ah.monthlyAvgHr} BPM`;
+
+  // 수면 심박수
+  const sHrEl = document.getElementById('ah-sleep-hr-val');
+  const sHrSub = document.getElementById('ah-sleep-hr-sub');
+  if (sHrEl) { sHrEl.textContent = today.sleepHr + ' BPM'; sHrEl.className = 'ah-val'; }
+  if (sHrSub) sHrSub.textContent = `월 평균 ${ah.monthlyAvgSleepHr} BPM`;
+
+  // 오늘 걸음수
+  const stepsEl = document.getElementById('ah-steps-val');
+  const stepsSub = document.getElementById('ah-steps-sub');
+  const stepsGoal = 10000;
+  const stepsOk = today.steps >= stepsGoal;
+  if (stepsEl) {
+    stepsEl.textContent = today.steps.toLocaleString();
+    stepsEl.className = 'ah-val' + (stepsOk ? '' : ' warn');
+  }
+  if (stepsSub) stepsSub.textContent = stepsOk ? '✅ 목표 달성!' : `목표까지 ${(stepsGoal - today.steps).toLocaleString()}보`;
+
+  // 주간 평균 걸음수
+  const swEl = document.getElementById('ah-steps-weekly-val');
+  const swSub = document.getElementById('ah-steps-weekly-sub');
+  if (swEl) { swEl.textContent = today.weeklyAvg.toLocaleString(); swEl.className = 'ah-val'; }
+  if (swSub) swSub.textContent = '이번 주 평균';
+
+  // 혈압
+  const bpEl = document.getElementById('ah-bp-val');
+  const bpSpikeWrap = document.getElementById('ah-bp-spike-wrap');
+  const bpSpikeLabel = document.getElementById('ah-bp-spike-label');
+  if (bpEl) {
+    const sys = parseInt(today.bp.split('/')[0]);
+    bpEl.textContent = today.bp + ' mmHg';
+    bpEl.className = 'ah-val' + (sys >= 140 ? ' danger' : sys >= 130 ? ' warn' : '');
+  }
+  if (bpSpikeWrap && bpSpikeLabel) {
+    if (today.spike) {
+      bpSpikeWrap.style.display = '';
+      bpSpikeLabel.textContent = `⚡ ${today.spike} 급격히 상승`;
+    } else {
+      bpSpikeWrap.style.display = 'none';
+    }
+  }
+
+  // 혈압 추이 (최근 7일 수축기)
+  const trendWrap = document.getElementById('ah-bp-trend-bars');
+  if (trendWrap) {
+    const last7 = ah.daily.slice(-7);
+    const maxSys = Math.max(...last7.map(d => parseInt(d.bp)));
+    trendWrap.innerHTML = last7.map(day => {
+      const sys = parseInt(day.bp);
+      const pct = Math.round((sys / (maxSys + 10)) * 100);
+      const col = sys >= 140 ? '#f87171' : sys >= 130 ? '#fbbf24' : '#34d399';
+      return `<div class="ah-trend">
+        <div class="ah-mini-label">${day.date.replace('3/','')}<span style="font-size:9px;color:var(--text3);">일</span></div>
+        <div class="ah-trend-bar"><div class="ah-trend-fill" style="width:${pct}%;background:${col};"></div></div>
+        <div class="ah-mini-label" style="text-align:right;">${sys}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ===== UTILS =====
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+// ===== 상단 상태바 현재 시간 연동 =====
+function updateStatusTime() {
+  const timeEl = document.getElementById('status-time');
+  if (!timeEl) return;
+
+  const now = new Date();
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+
+  // 12시간제로 표시 (원하면 지우고 24시간제로 써도 됨!)
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  // 분이 한 자리수일 때 앞에 0 붙여주기 (예: 9:05)
+  minutes = minutes.toString().padStart(2, '0');
+
+  timeEl.textContent = `${hours}:${minutes}`;
+}
+
+// 1초(1000ms)마다 시간 업데이트 실행
+setInterval(updateStatusTime, 1000);
+// 화면 켜지자마자 한 번 바로 실행
+updateStatusTime();
+</script>
+</body>
+</html>
